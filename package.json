@@ -1,0 +1,28 @@
+{
+  "name": "lfc-ticket-parser",
+  "version": "1.0.0",
+  "description": "Application to parse the Liverpool FC Ticket Availability page and give up-to-date details of sale dates and criteria.",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "jest",
+    "docs": "npx typedoc --disableSources",
+    "lint": "npx eslint src/**/*.ts test/**/*.ts"
+  },
+  "author": "Alasdair Peacock",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/preset-typescript": "^7.24.7",
+    "@eslint/js": "^9.9.0",
+    "@jest/globals": "^29.7.0",
+    "@types/eslint__js": "^8.42.3",
+    "eslint": "^9.9.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.4",
+    "typedoc": "^0.26.6",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.2.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
