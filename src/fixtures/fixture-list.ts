@@ -1,4 +1,4 @@
-import dotenv from 'dotenv'
+import dotenv from 'dotenv';
 
 import Fixture from './fixture';
 
@@ -23,7 +23,10 @@ export default class FixtureList {
     async download(): Promise<boolean> {
 
         dotenv.config();
-        const url: Undefinable<string> = process.env.URL;
+        if ( !process.env.DOMAIN || !process.env.INDEX_URL ) {
+            return false;
+        }
+        const url: Undefinable<string> = process.env.DOMAIN + process.env.INDEX_URL;
         if ( !url ) {
             return false;
         }
@@ -84,6 +87,35 @@ export default class FixtureList {
         }
         return this.fixtures.length;
 
+    }
+
+    /**
+     * Returns all fixtures belonging to the fixture list.
+     * @return {Array<Fixture>} An array of Fixture objects previously found.
+     */
+    getFixtures(): Array<Fixture> {
+        return this.fixtures;
+    }
+
+    /**
+     * Loops through each fixture previously found, and parses them in turn to find all relevant upcoming sales details.
+     * @return {boolean} A boolean indicating the success, or otherwise, of the operation.
+     */
+    async parseAll(): Promise<boolean> {
+        let success: boolean = true;
+        for ( const fixture of this.fixtures ) {
+            const downloaded: boolean = await fixture.download();
+            if ( !downloaded ) {
+                success = false;
+            }
+            try {
+                fixture.find();
+            } catch (e) {
+                console.error(e);
+                success = false;
+            }
+        }
+        return success;
     }
 
 }
