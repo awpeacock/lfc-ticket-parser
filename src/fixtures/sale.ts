@@ -1,3 +1,5 @@
+import { EventAttributes } from 'ics';
+
 /**
  * Class representing details of an individual sale (or registration) associated with a fixture.
  */
@@ -17,9 +19,11 @@ export default class Sale {
      * @param {Nullable<Date>} date - The date and time of the sale (if in the future).
      */
     constructor(description: string, status: Status, date: Nullable<Date>) {
+
         this.description = description;
         this.date = date;
         this.status = status;
+
     }
 
     /**
@@ -27,7 +31,9 @@ export default class Sale {
      * @return {boolean} A boolean representing whether it is still pending, has a date, isn't a local sale, and isn't for ambulant or hospitality seating.
      */
     isValid(): boolean {
+
         return this.status == Status.PENDING && this.date != null && !this.description.startsWith('Local') && !this.description.includes('ambulant') && this.description.indexOf('Hospitality') == -1;
+    
     }
 
     /**
@@ -35,9 +41,31 @@ export default class Sale {
      * @return {Nullable<string>} The Json string if it is valid, otherwise null.
      */
     getJson(): Nullable<string> {
+
         if ( !this.isValid() ) {
             return null;
         }
         return '{"description":"' + this.description + '","date":"' + this.date + '"}';
+
     }
+
+    /**
+     * Returns an ICS event representation of the sale/registration.
+     * @return {Nullable<EventAttributes>} The attributes for the event if it is valid, otherwise null.
+     */
+    getCalendarEvent(): Nullable<EventAttributes> {
+
+        if ( !this.isValid() ) {
+            return null;
+        }
+        // We force it to recognise this.date as non-null as we can't get past isValid() without a date
+        return {
+            title: this.description,
+            start: [this.date!.getFullYear(), this.date!.getMonth() + 1, this.date!.getDate(), this.date!.getHours(), this.date!.getMinutes()],
+            duration: { minutes: 60 },
+            busyStatus: 'BUSY'
+        };
+
+    }
+
 }

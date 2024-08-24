@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { EventAttributes } from 'ics';
 
 import Sale from "./sale";
 
@@ -86,7 +87,7 @@ export default class Fixture {
             throw 'HTML is empty';
         }
         // First off, a quick sanity check we've got the right fixture
-        const pattern: string = '<title>' + (this.venue == 'A' ? this.opposition + ' V Liverpool Fc' : 'Liverpool Fc V ' + this.opposition) + '.*?</title>'; 
+        const pattern: string = '<title>' + (this.venue == 'A' ? this.opposition.replace('&amp; ', '') + ' V Liverpool Fc' : 'Liverpool Fc V ' + this.opposition.replace('&amp; ', '')) + '.*?</title>'; 
         const title: Nullable<RegExpMatchArray> = this.html.match(pattern);
         if ( title == null ) {
             throw 'Parsing the wrong fixture';
@@ -105,7 +106,7 @@ export default class Fixture {
                 credits = parseInt(prereqs[1]);
             }
 
-            const description: string = match[1] + (credits > 0 ? ' (' + credits + '+)' : '');
+            const description: string = match[1] + (!match[1].endsWith('Sale') ? ' Sale' : '') + (credits > 0 ? ' (' + credits + '+)' : '');
             const status: Status = (
                 (match[3].toLowerCase().indexOf('ended') > -1 || match[3].toLowerCase().indexOf('sold out') > -1) ? Status.ENDED : (
                 (match[3].toLowerCase().indexOf('available') > -1 || match[3].toLowerCase().indexOf('buy now') > -1) ? Status.AVAILABLE : 
@@ -171,6 +172,25 @@ export default class Fixture {
         json = json.substring(0, json.length - 1);
         json += ']}}';
         return json;
+    }
+
+    /**
+     * Returns an array of ICS events representating any valid sales/registrations associated with the fixture.
+     * @return {Array<EventAttributes>} An array of all attributes for all valid events.
+     */
+    getCalendarEvents(): Array<EventAttributes> {
+        
+        const events: Array<EventAttributes> = [];
+        this.sales.forEach((sale) => {
+            if ( sale.isValid() ) {
+                // If the sale is valid, we know this will not be null, so we can safely force the type
+                const event: EventAttributes = sale.getCalendarEvent() as EventAttributes;
+                event.title = this.opposition.replace('&amp;', 'and') + ' (' + this.venue + ') : ' + event.title;
+                events.push(event);
+            }
+        });
+        return events;
+
     }
 
 }

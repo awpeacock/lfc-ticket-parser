@@ -1,33 +1,9 @@
 import {describe, it, expect, jest} from '@jest/globals';
-import * as fs from 'fs';
 
 import { Fixture, FixtureList, Sale } from "../src/fixtures";
+import setup from "./setup";
 
-const files: {[key: string]: string} = {
-    index: fs.readFileSync('./test/mocks/availability-fixture-list.html', 'utf-8'),
-    home: fs.readFileSync('./test/mocks/availability-home-active.html', 'utf-8'),
-    multiple: fs.readFileSync('./test/mocks/availability-home-multiple.html', 'utf-8'),
-    inactive: fs.readFileSync('./test/mocks/availability-home-inactive.html', 'utf-8'),
-    sold: fs.readFileSync('./test/mocks/availability-away-inactive.html', 'utf-8')
-};
-global.fetch = jest.fn((input: RequestInfo | URL) => {
-    const url: string = (input as URL).toString();
-    let html: string = '';
-    if ( url.endsWith('tickets-availability') ) {
-        html = files.index;
-    } else if ( url.includes('brentford') ) {
-        html = files.home;
-    } else if ( url.includes('chelsea') ) {
-        html = files.multiple;
-    } else if ( url.includes('nottingham-forest') ) {
-        html = files.inactive;
-    } else if ( url.includes('manchester-united') ) {
-        html = files.sold;
-    }
-    return Promise.resolve({
-        text: () => Promise.resolve(html)
-    })
-}) as jest.Mock<typeof fetch>;
+setup();
 
 describe('Parsing the fixture list', () => {
 
@@ -39,7 +15,7 @@ describe('Parsing the fixture list', () => {
     it('should correctly read from the index page', () => {
         let size: number = 0;
         expect(() => { size = index.find() }).not.toThrow();
-        expect(size).toEqual(4);
+        expect(size).toEqual(6);
     });
 
     it('should successfully parse all fixtures previously found', async () => {
@@ -54,7 +30,7 @@ describe('Parsing the fixture list', () => {
                 valid++;
             }
         });
-        expect(valid).toEqual(2);
+        expect(valid).toEqual(4);
     });
 
     it('should throw errors if it cannot parse the index page', async () => {
@@ -144,7 +120,7 @@ describe('Parsing an active home fixture with multiple sales', () => {
     });
 
     it('should successfully generate a JSON string with sales dates', () => {
-        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-chelsea-h-premier-league","match":"Chelsea (H) - Premier League (2024-25)","sales":[{"description":"Members (13+)","date":"Wed Sep 04 2024 08:15:00 GMT+0100 (British Summer Time)"},{"description":"Members (4+)","date":"Thu Sep 05 2024 08:15:00 GMT+0100 (British Summer Time)"}]}}');
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-chelsea-h-premier-league","match":"Chelsea (H) - Premier League (2024-25)","sales":[{"description":"Members Sale (13+)","date":"Wed Sep 04 2024 08:15:00 GMT+0100 (British Summer Time)"},{"description":"Members Sale (4+)","date":"Thu Sep 05 2024 08:15:00 GMT+0100 (British Summer Time)"}]}}');
     });
 
 });
