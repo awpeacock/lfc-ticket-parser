@@ -84,7 +84,7 @@ export default class Fixture {
     find(): number {
 
         if ( this.html == null || this.html == '' ) {
-            throw 'HTML is empty';
+            throw 'HTML for "' + this.getMatch() + '" is empty';
         }
         // First off, a quick sanity check we've got the right fixture
         const pattern: string = '<title>' + (this.venue == 'A' ? this.opposition.replace('&amp; ', '') + ' V Liverpool Fc' : 'Liverpool Fc V ' + this.opposition.replace('&amp; ', '')) + '.*?</title>'; 
@@ -106,7 +106,7 @@ export default class Fixture {
                 credits = parseInt(prereqs[1]);
             }
 
-            const description: string = match[1] + (!match[1].endsWith('Sale') ? ' Sale' : '') + (credits > 0 ? ' (' + credits + '+)' : '');
+            const description: string = match[1] + ((!match[1].endsWith('Sale') && !match[1].endsWith('Registration')) ? ' Sale' : '') + (credits > 0 ? ' (' + credits + '+)' : '');
             const status: Status = (
                 (match[3].toLowerCase().indexOf('ended') > -1 || match[3].toLowerCase().indexOf('sold out') > -1) ? Status.ENDED : (
                 (match[3].toLowerCase().indexOf('available') > -1 || match[3].toLowerCase().indexOf('buy now') > -1) ? Status.AVAILABLE : 

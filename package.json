@@ -4,6 +4,8 @@
   "description": "Application to parse the Liverpool FC Ticket Availability page and give up-to-date details of sale dates and criteria.",
   "main": "src/index.ts",
   "scripts": {
+    "build": "tsc --build",
+    "start": "tsc --build && node dist/index.js",
     "test": "jest",
     "docs": "npx typedoc --disableSources",
     "lint": "npx eslint src/**/*.ts test/**/*.ts"
@@ -23,7 +25,9 @@
     "typescript-eslint": "^8.2.0"
   },
   "dependencies": {
+    "@types/nodemailer": "^6.4.15",
     "dotenv": "^16.4.5",
-    "ics": "^3.7.6"
+    "ics": "^3.7.6",
+    "nodemailer": "^6.9.14"
   }
 }

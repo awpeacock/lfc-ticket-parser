@@ -49,7 +49,7 @@ export default class FixtureList {
     find(): number {
 
         if ( this.html == null || this.html == '' ) {
-            throw 'HTML is empty';
+            throw 'HTML for the "Tickets Availability" index page is empty';
         }
         // Every fixture on the page is contained within an A tag with the following class name - loop through all of these
         // to get the pertinent information that will help us to parse them all for selling arrangements
