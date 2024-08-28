@@ -30,6 +30,10 @@ export default class Fixture {
     /** An array of sale dates for the fixture (including ended sales and sales that aren't relevant). */
     private sales: Array<Sale> = [];
 
+    /** A boolean representing whether this fixture has changed since the parser was last run - set to true by default, 
+     * so all fixtures will be emailed in case of any issues with connecting with the persistence layer. */
+    private changed: boolean = true;
+
     /**
      * Creates a Fixture from the parameters provided.
      * @param {string} url - The URL of the page containing sales dates.
@@ -191,6 +195,22 @@ export default class Fixture {
         });
         return events;
 
+    }
+
+    /**
+     * Sets whether the fixture has changed since this was last run.
+     * @param {boolean} changed - Whether the sales dates for this fixture have changed.
+     */
+    setChanged(changed: boolean): void {
+        this.changed = changed;
+    }
+
+    /**
+     * Indicates whether the fixture has changed since this was last run.
+     * @return {boolean} Whether the sales dates for this fixture have changed.
+     */
+    hasChanged(): boolean {
+        return this.changed;
     }
 
 }

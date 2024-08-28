@@ -109,7 +109,7 @@
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
   },
   "typedocOptions": {
-    "entryPoints": ["src/fixtures/index.ts", "src/types/global.d.ts"],
+    "entryPoints": ["src/fixtures/index.ts", "src/persistence/index.ts", "src/types/global.d.ts"],
     "out": "docs"
   },
   "include": [

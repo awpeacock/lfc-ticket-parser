@@ -25,3 +25,12 @@ declare const enum Status {
     /** A sale that has previously ended. */
     ENDED
 }
+
+/**
+ * An enumeration representing the possible databases for persisting fixture data.
+ * @enum
+ */
+declare const enum Database {
+    /** AWS DynamoDB */
+    DYNAMODB = 'DynamoDB'
+}

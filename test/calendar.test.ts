@@ -34,8 +34,8 @@ describe('Converting the fixture list', () => {
         // Override the original mock to force the download to fail, so we can
         // check find() handles this correctly (but also hide console error logs
         // so that they only show us useful stuff during testing)
-        const fetch = jest.spyOn(ICS, 'createEvents');
-        fetch.mockImplementationOnce(() => { return { error: 'Something went wrong', value: null }}); 
+        const create = jest.spyOn(ICS, 'createEvents');
+        create.mockImplementationOnce(() => { return { error: 'Something went wrong', value: null }}); 
 
         expect(() => index.getCalendarEvents()).toThrow();
     });
