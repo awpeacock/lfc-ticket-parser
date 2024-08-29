@@ -125,7 +125,63 @@ describe('Parsing an active home fixture with multiple sales', () => {
 
 });
 
-//TODO: Build tests for an active away fixture once one appears on the LFC site
+describe('Parsing an active away fixture with multiple sales', () => {
+
+    const fixture: Fixture = new Fixture('/tickets/tickets-availability/wolverhampton-wanderers-v-liverpool-fc-28-sep-2024-0530pm-372', 'Wolverhampton Wanderers', 'A', 'Premier League', new Date('2024-09-28 17:30'));
+    fixture.download();
+
+    it('should successfully generate a unique ID', () => {
+        expect(fixture.id).toEqual('2024-wolverhampton-wanderers-a-premier-league');
+    });
+
+    it('should successfully generate a match string', () => {
+        expect(fixture.getMatch()).toEqual('Wolverhampton Wanderers (A) - Premier League (2024-25)');
+    });
+
+    it('should successfully parse', () => {
+        let size: number = 0;
+        expect(() => { size = fixture.find() }).not.toThrow();
+        expect(size).toEqual(4);
+    });
+
+    it('should successfully recognise the number of valid sales', () => {
+        expect(fixture.getActiveSaleCount()).toEqual(4);
+    });
+
+    it('should successfully generate a JSON string with sales dates', () => {
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-wolverhampton-wanderers-a-premier-league","match":"Wolverhampton Wanderers (A) - Premier League (2024-25)","sales":[{"description":"ST Holders and Members Sale (11+)","date":"Mon Sep 02 2024 08:15:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (10+)","date":"Tue Sep 03 2024 11:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (9+)","date":"Tue Sep 03 2024 13:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (8+)","date":"Tue Sep 03 2024 15:00:00 GMT+0100 (British Summer Time)"}]}}');
+    });
+
+});
+
+describe('Parsing an active away fixture with potential sales', () => {
+
+    const fixture: Fixture = new Fixture('/tickets/tickets-availability/manchester-utd-v-liverpool-fc-1-sep-2024-0400pm-364', 'Manchester United', 'A', 'Premier League', new Date('2024-09-01 16:00'));
+    fixture.download();
+
+    it('should successfully generate a unique ID', () => {
+        expect(fixture.id).toEqual('2024-manchester-united-a-premier-league');
+    });
+
+    it('should successfully generate a match string', () => {
+        expect(fixture.getMatch()).toEqual('Manchester United (A) - Premier League (2024-25)');
+    });
+
+    it('should successfully parse', () => {
+        let size: number = 0;
+        expect(() => { size = fixture.find() }).not.toThrow();
+        expect(size).toEqual(4);
+    });
+
+    it('should successfully recognise the number of valid sales', () => {
+        expect(fixture.getActiveSaleCount()).toEqual(3);
+    });
+
+    it('should successfully generate a JSON string with sales dates', () => {
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-manchester-united-a-premier-league","match":"Manchester United (A) - Premier League (2024-25)","sales":[{"description":"ST Holders and Members Sale (7+)","date":"Wed Aug 28 2024 11:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (6+)","date":"Wed Aug 28 2024 13:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (5+)","date":"Wed Aug 28 2024 15:00:00 GMT+0100 (British Summer Time)"}]}}');
+    });
+
+});
 
 describe('Parsing an inactive home fixture', () => {
 

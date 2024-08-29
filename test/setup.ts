@@ -6,9 +6,11 @@ export default function() {
     const files: {[key: string]: string} = {
         index: fs.readFileSync('./test/mocks/availability-fixture-list.html', 'utf-8'),
         home: fs.readFileSync('./test/mocks/availability-home-active.html', 'utf-8'),
+        away: fs.readFileSync('./test/mocks/availability-away-active.html', 'utf-8'),
         multiple: fs.readFileSync('./test/mocks/availability-home-multiple.html', 'utf-8'),
         bulk1: fs.readFileSync('./test/mocks/availability-home-bulk-1.html', 'utf-8'),
         bulk2: fs.readFileSync('./test/mocks/availability-home-bulk-2.html', 'utf-8'),
+        subject: fs.readFileSync('./test/mocks/availability-away-subject.html', 'utf-8'),
         inactive: fs.readFileSync('./test/mocks/availability-home-inactive.html', 'utf-8'),
         sold: fs.readFileSync('./test/mocks/availability-away-inactive.html', 'utf-8')
     };
@@ -25,6 +27,10 @@ export default function() {
             html = files.bulk1;
         } else if ( url.includes('aston-villa') ) {
             html = files.bulk2;
+        } else if ( url.includes('wolverhampton-wanderers') ) {
+            html = files.away;
+        } else if ( url.includes('manchester-utd') ) {
+            html = files.subject;
         } else if ( url.includes('nottingham-forest') ) {
             html = files.inactive;
         } else if ( url.includes('manchester-united') ) {

@@ -98,19 +98,19 @@ export default class Fixture {
         }
             
         // Now, find each element representing a sale date, registration date, etc.
-        const re: RegExp = /<h3>.*?<span class="salename">(.+?)<\/span>.*?(?:<span class="prereqs">(.*?)<\/span>).*?<span class="status">(.+?)<\/span>\s*?(?:(?:<span class="whenavailable">(.+?)(\d{1,2}):(\d{2})([ap]m)<\/span>).*?)?<\/h3>/gis;
+        const re: RegExp = /<h3>.*?<span class="salename">(.+?)<\/span>.*?(?:<span class="prereqs">(.*?)<\/span>).*?<span class="status">(.+?)<\/span>\s*?(?:(?:<span class="whenavailable">(.+?)(\d{1,2}):(\d{2})([ap]m)<\/span>).*?)?<\/h3>.*?(?:(?:Buy.*?from (\d{1,2})(?:[:.](\d{2}))?([ap]m).*?([A-Z].*?)\.<).*?)?<\/li>/gs;
         let match : Nullable<RegExpExecArray>;
         while ( (match = re.exec(this.html)) !== null ) {
 
             // Any tier one fixtures or away games will have pre-requisites (how many credits recorded) for the sale.
             // Make sure to capture this and include in the description to make the information useful.
             let credits: number = 0;
-            const prereqs: Nullable<RegExpMatchArray> = match[2].match(/recorded (\d+?)\+/);
+            const prereqs: Nullable<RegExpMatchArray> = match[2].match(/recorded (\d+?)[+| or more]/);
             if ( prereqs != null ) {
                 credits = parseInt(prereqs[1]);
             }
 
-            const description: string = match[1] + ((!match[1].endsWith('Sale') && !match[1].endsWith('Registration')) ? ' Sale' : '') + (credits > 0 ? ' (' + credits + '+)' : '');
+            const description: string = match[1].replace(/SEASON TICKET HOLDERS/i, 'ST Holders').replace(/OFFICIAL MEMBERS/i, 'Members').replace(/AND/i, 'and') + ((!match[1].endsWith('Sale') && !match[1].endsWith('Registration')) ? ' Sale' : '') + (credits > 0 ? ' (' + credits + '+)' : '');
             const status: Status = (
                 (match[3].toLowerCase().indexOf('ended') > -1 || match[3].toLowerCase().indexOf('sold out') > -1) ? Status.ENDED : (
                 (match[3].toLowerCase().indexOf('available') > -1 || match[3].toLowerCase().indexOf('buy now') > -1) ? Status.AVAILABLE : 
@@ -123,6 +123,11 @@ export default class Fixture {
             if ( match[4] ) {
                 date = new Date(match[4]);
                 const hours: number = parseInt(match[5]) + (match[7] == 'pm' ? 12: 0), minutes: number = parseInt(match[6]);
+                date.setHours(hours);
+                date.setMinutes(minutes);
+            } else if ( match[8] ) {
+                date = new Date(match[11] + (/\s\d{4}$/.test(match[11]) ? '' : ' ' + new Date().getFullYear()));
+                const hours: number = parseInt(match[8]) + (match[10] == 'pm' ? 12: 0), minutes: number = (match[6] ? parseInt(match[6]) : 0);
                 date.setHours(hours);
                 date.setMinutes(minutes);
             }
