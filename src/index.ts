@@ -4,11 +4,31 @@ import { Attachment } from 'nodemailer/lib/mailer';
 import SMTPTransport, { MailOptions } from 'nodemailer/lib/smtp-transport';
 
 import { FixtureList } from "./fixtures";
+import { PersistenceFactory, Client } from './persistence';
 
 class TicketParser {
 
     static async parse() {
+
+        dotenv.config();
         const fixtures: FixtureList = new FixtureList();
+
+        // Initialise the DB in a separate try/catch loop - if an unexpected error
+        // occurs we don't want it to impact sending the email
+        let client: Client, persistable: boolean = false;
+        try {
+            const db: Database = process.env.DB_CLIENT as Database;
+            const table: string = process.env.DB_TABLE as string;
+            
+            client = PersistenceFactory.getClient(db, table);
+            persistable = await client.init();
+        } catch (e) {
+            console.error(e);
+            TicketParser.email('Error trying to initialise DB', 'The following error occurred:\r\n' + e + '\r\nThe email should still send but may contain details already sent.');
+        }
+
+        // Now loop through the fixtures, finding sales dates, comparing them to already persisted ones,
+        // and email out any new ones.
         try {
             const success: boolean = await fixtures.download();
             if ( !success ) {
@@ -20,19 +40,28 @@ class TicketParser {
                 if ( !parsed ) {
                     throw('Unable to parse fixtures');
                 }
-                const ics: string = fixtures.getCalendarEvents();
-                const date: string = new Date().getDate() + '/' + (new Date().getMonth()+1) + '/' + new Date().getFullYear();
-                const attachment: Attachment = {
-                    filename: 'lfcinfo.ics',
-                    content: ics
-                };
-                const success: boolean = await TicketParser.email(
-                    'Latest LFC ticket dates (' + date + ')', 
-                    'Please find attached the latest sales dates for LFC fixtures.  Load the file using your preferred calendar software.',
-                    attachment
-                );
-                if ( !success ) {
-                    console.error('Unable to send email');
+
+                if ( persistable ) {
+                    for ( const fixture of fixtures.getFixtures() ) {
+                        await client!.sync(fixture);
+                    }
+                }
+
+                if ( fixtures.hasChanged() ) {
+                    const ics: string = fixtures.getCalendarEvents()
+                    const date: string = new Date().getDate() + '/' + (new Date().getMonth()+1) + '/' + new Date().getFullYear();
+                    const attachment: Attachment = {
+                        filename: 'lfcinfo.ics',
+                        content: ics
+                    };
+                    const success: boolean = await TicketParser.email(
+                        'Latest LFC ticket dates (' + date + ')', 
+                        'Please find attached the latest sales dates for LFC fixtures.  Load the file using your preferred calendar software.',
+                        attachment
+                    );
+                    if ( !success ) {
+                        console.error('Unable to send email');
+                    }
                 }
             }
         } catch (e) {
@@ -45,7 +74,6 @@ class TicketParser {
 
         try {
 
-            dotenv.config();
             // If we've not managed to get the email config, no point continuing - this is dead
             if ( !process.env.EMAIL_HOST ) {
                 return false;

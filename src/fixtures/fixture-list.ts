@@ -120,6 +120,20 @@ export default class FixtureList {
     }
 
     /**
+     * Indicates whether any fixtures contained within this fixture list have changed since this was last run.
+     * @return {boolean} Whether the sales dates for any fixtures have changed.
+     */
+    hasChanged(): boolean {
+        let changed: boolean = false;
+        for ( const fixture of this.fixtures ) {
+            if ( fixture.hasChanged() && fixture.getActiveSaleCount() > 0 ) {
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /**
      * Returns an ICS string representating any valid sales/registrations associated with all fixtures found.
      * @return {string} A string in ICS format for all sales/registrations..
      * @throws Will throw an error if it is unable to create the ICS string.
@@ -128,7 +142,7 @@ export default class FixtureList {
 
         let events: Array<ICS.EventAttributes> = [];
         this.fixtures.forEach((fixture) => {
-            if ( fixture.getActiveSaleCount() > 0 ) {
+            if ( fixture.getActiveSaleCount() > 0 && fixture.hasChanged() ) {
                 events = events.concat(fixture.getCalendarEvents());
             }
         });

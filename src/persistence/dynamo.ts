@@ -152,6 +152,8 @@ export default class DynamoDB extends Client {
                 if ( !success ) {
                     return false;
                 }
+            } else {
+                fixture.setChanged(false);
             }
 
         } else {
