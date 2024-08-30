@@ -58,10 +58,16 @@ export default class Sale {
         if ( !this.isValid() ) {
             return null;
         }
-        // We force it to recognise this.date as non-null as we can't get past isValid() without a date
+
+        // First off, check the offset between UK time and UTC to ensure the correct time is passed to the ICS generator.
+        // We force it to recognise this.date as non-null as we can't get past isValid() without a date.
+        const uk: string = this.date!.toLocaleTimeString('en-gb', {timeZone: 'Europe/London'});
+        const here = this.date!.toLocaleTimeString('en-gb', {timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone});
+        const offset = parseInt(here.substring(0,2)) - parseInt(uk.substring(0, 2));
         return {
+            productId: 'lfctickets/ics',
             title: this.description,
-            start: [this.date!.getFullYear(), this.date!.getMonth() + 1, this.date!.getDate(), this.date!.getHours(), this.date!.getMinutes()],
+            start: [this.date!.getFullYear(), this.date!.getMonth() + 1, this.date!.getDate(), this.date!.getHours() + offset, this.date!.getMinutes()],
             duration: { minutes: 60 },
             busyStatus: 'BUSY'
         };

@@ -186,7 +186,7 @@ export default class FixtureList {
         if ( response.error ) {
             throw(response.error);
         }
-        return response.value!.replace('PRODID:adamgibbons/ics', 'PRODID:lfctickets/ics');
+        return response.value!;
 
     }
 

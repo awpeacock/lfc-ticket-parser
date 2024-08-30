@@ -48,7 +48,7 @@ class TicketParser {
                 }
 
                 if ( fixtures.hasChanged() ) {
-                    const ics: string = fixtures.getCalendarEvents()
+                    const ics: string = fixtures.getCalendarEvents();
                     const date: string = new Date().getDate() + '/' + (new Date().getMonth()+1) + '/' + new Date().getFullYear();
                     const attachment: Attachment = {
                         filename: 'lfcinfo.ics',
