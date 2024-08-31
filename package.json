@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc --build",
+    "build:aws": "tsc --build && node ./build.mjs",
     "start": "tsc --build && node dist/index.js",
     "test": "jest",
     "docs": "npx typedoc --disableSources",
@@ -28,6 +29,7 @@
     "@aws-sdk/client-dynamodb": "^3.637.0",
     "@aws-sdk/lib-dynamodb": "^3.637.0",
     "@types/nodemailer": "^6.4.15",
+    "archiver": "^7.0.1",
     "aws-sdk-client-mock": "^4.0.1",
     "dotenv": "^16.4.5",
     "ics": "^3.7.6",

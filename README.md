@@ -51,35 +51,20 @@ If no database is configured, the parser will not fail, it will still parse the 
 Once configured, to run it locally from within a [Node](https://nodejs.org/en) environment, you only need to run the following command:
 
 ```bash
-npm run start
+npm start
 ```
 
 ### Running as an AWS Lambda
 
 If you wish to run it as an [AWS Lambda](https://aws.amazon.com/lambda/) service, then you need to follow these steps:
 
-1. Compile the Javascript code:
+1. Compile the Javascript code - this will create a zip file `lfct-aws-js.zip` in the `outputs` folder (creating that folder if it doesn't already exist):
 ```bash
-npm run build
+npm run build:aws
 ```
-2. Copy the contents of the `dist` folder outside of the project file structure
-3. From within this new folder, install the necessary dependencies:
-```bash
-npm install dotenv
-npm install ics
-npm install nodemailer
-```
-4. Zip up the contents of the new folder
-5. Create your new Lambda service
-6. In the content editor, upload the zip file
-7. Edit `index.js` - replace `TicketParser.parse();`
-        with
-```javascript
-module.exports.handler = async (event) => {
-    await TicketParser.parse();
-};
-```
-8. Be sure to setup the environment variables above, within Configuration > Environment Variables
+2. Create your new Lambda service.
+3. In the content editor, upload the newly created zip file.
+4. Be sure to setup the environment variables above, within *Configuration* > *Environment Variables*.
 
 You can then run this [Lambda](https://aws.amazon.com/lambda/) through whichever method you choose (for example, an [EventBridge](https://aws.amazon.com/eventbridge/) schedule).
 

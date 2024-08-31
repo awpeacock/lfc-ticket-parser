@@ -19,7 +19,7 @@ class TicketParser {
         try {
             const db: Database = process.env.DB_CLIENT as Database;
             const table: string = process.env.DB_TABLE as string;
-            
+            console.log('+ Initialising "' + db + '" database');
             client = PersistenceFactory.getClient(db, table);
             persistable = await client.init();
         } catch (e) {
@@ -30,25 +30,32 @@ class TicketParser {
         // Now loop through the fixtures, finding sales dates, comparing them to already persisted ones,
         // and email out any new ones.
         try {
+            console.log('+ Downloading fixture list');
             const success: boolean = await fixtures.download();
             if ( !success ) {
                 throw('Unable to retrieve fixtures');
             }
+            console.log('+ Parsing for fixtures');
             const count: number = fixtures.find();
+            console.log('+ ' + count + ' fixtures found');
             if ( count > 0 ) {
+                console.log('+ Parsing individual fixtures');
                 const parsed: boolean = await fixtures.parseAll();
                 if ( !parsed ) {
                     throw('Unable to parse fixtures');
                 }
 
                 if ( persistable ) {
+                    console.log('+ Syncing with database');
                     for ( const fixture of fixtures.getFixtures() ) {
                         await client!.sync(fixture);
                     }
                 }
 
                 if ( fixtures.hasChanged() ) {
+                    console.log('+ Generating ICS file');
                     const ics: string = fixtures.getCalendarEvents();
+                    console.log('+ Emailing ICS file');
                     const date: string = new Date().getDate() + '/' + (new Date().getMonth()+1) + '/' + new Date().getFullYear();
                     const attachment: Attachment = {
                         filename: 'lfcinfo.ics',
@@ -62,8 +69,12 @@ class TicketParser {
                     if ( !success ) {
                         console.error('Unable to send email');
                     }
+                } else {
+                    console.log('+ No changes since last email');
                 }
             }
+            console.log('+ Ticket Parsing Complete');
+            console.log('----------------------------------------');
         } catch (e) {
             console.error(e);
             TicketParser.email('Error trying to send LFC sales email', 'The following error occurred:\r\n' + e);
@@ -120,4 +131,17 @@ class TicketParser {
 
 }
 
-TicketParser.parse();
+const isLambda: boolean = !!process.env.LAMBDA_TASK_ROOT;
+if ( isLambda ) {
+    module.exports.handler = async () => {
+        console.log('----------------------------------------');
+        console.log('Running LFC Ticket Parser on AWS Lambda');
+        console.log('----------------------------------------');
+        await TicketParser.parse();
+    };    
+} else {
+    console.log('----------------------------------------');
+    console.log('Running LFC Ticket Parser locally');
+    console.log('----------------------------------------');
+    TicketParser.parse();
+}
