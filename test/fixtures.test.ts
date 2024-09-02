@@ -1,4 +1,5 @@
 import {describe, it, expect, jest} from '@jest/globals';
+import * as fs from 'fs';
 
 import { Fixture, FixtureList, Sale } from "../src/fixtures";
 import setup from "./setup";
@@ -34,19 +35,42 @@ describe('Parsing the fixture list', () => {
     });
 
     it('should throw errors if it cannot parse the index page', async () => {
-        // Override the original mock to force the download to fail, so we can
-        // check find() handles this correctly (but also hide console error logs
-        // so that they only show us useful stuff during testing)
+        
         const fetch = jest.spyOn(global, 'fetch');
         fetch.mockImplementationOnce(() => Promise.reject('Failure retrieving HTML')); 
-        const error = jest.spyOn(console, 'error')
-        error.mockImplementation(() => null);
 
-        const faulty = new FixtureList();
+        // This should catch if the fixture list didn't download (is empty error)
+        const faulty: FixtureList = new FixtureList();
+        expect(faulty.download()).resolves.toBe(false);
+        expect(() => { faulty.find() }).toThrow();
+
+        // This should catch if the HTML wasn't what was expected
+        const download = jest.spyOn(FixtureList.prototype, 'download');
+        download.mockImplementationOnce(async function(this: Fixture) { 
+            this['html'] = '<a class="ticket-card fixture" href="fixture.html"><div class="info">Not what is expected</div></a>';
+            return true;
+        });
         await faulty.download();
-        expect(() => faulty.find()).toThrow();
+        expect(() => { faulty.find() }).toThrow();
+        
+    });
 
-        error.mockRestore();
+    it('should return false if it cannot parse any fixture pages', async () => {
+        
+        const fetch = jest.spyOn(global, 'fetch');
+        fetch.mockImplementationOnce(() => Promise.reject('Failure retrieving HTML')); 
+        
+        // This should catch if a fixture page cannot download
+        expect(index.parseAll()).resolves.toBe(false);
+
+        const download = jest.spyOn(Fixture.prototype, 'download');
+        download.mockImplementationOnce(async function(this: Fixture) { 
+            this['html'] = fs.readFileSync('./test/mocks/availability-home-multiple.html', 'utf-8');
+            return true;
+        });
+        // This should catch if a fixture page cannot parse
+        expect(index.parseAll()).resolves.toBe(false);
+
     });
 
 });
@@ -58,6 +82,10 @@ describe('Parsing an active home fixture', () => {
 
     it('should successfully generate a unique ID', () => {
         expect(fixture.id).toEqual('2024-brentford-h-premier-league');
+    });
+
+    it('should successfully assign the correct season to the fixture', () => {
+        expect(Reflect.get(fixture, 'season')).toBe(2024);
     });
 
     it('should successfully generate a match string', () => {
@@ -79,19 +107,28 @@ describe('Parsing an active home fixture', () => {
     });
 
     it('should throw errors if it cannot parse the fixture page', async () => {
-        // Override the original mock to force the download to fail, so we can
-        // check find() handles this correctly (but also hide console error logs
-        // so that they only show us useful stuff during testing)
+
         const fetch = jest.spyOn(global, 'fetch');
         fetch.mockImplementationOnce(() => Promise.reject('Failure retrieving HTML')); 
-        const error = jest.spyOn(console, 'error')
-        error.mockImplementation(() => null);
 
         const faulty: Fixture = new Fixture('/tickets/tickets-availability/liverpool-fc-v-brentford-25-aug-2024-0430pm-342', 'Brentford', 'H', 'Premier League', new Date('2024-08-25 16:30'));
         await faulty.download();
         expect(() => faulty.find()).toThrow();
-        
-        error.mockRestore();
+
+    });
+
+    it('should throw errors if the HTML of the fixture page does not match the expected fixture', async () => {
+
+        const faulty: Fixture = new Fixture('/tickets/tickets-availability/liverpool-fc-v-brentford-25-aug-2024-0430pm-342', 'Brentford', 'H', 'Premier League', new Date('2024-08-25 16:30'));
+        const download = jest.spyOn(faulty, 'download');
+        download.mockImplementationOnce(async function(this: Fixture) { 
+            this['html'] = fs.readFileSync('./test/mocks/availability-home-multiple.html', 'utf-8');
+            return true;
+        });
+
+        await faulty.download();
+        expect(() => faulty.find()).toThrow();
+
     });
 
 });

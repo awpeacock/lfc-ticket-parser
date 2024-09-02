@@ -36,11 +36,10 @@ export default abstract class Client {
 
     /**
      * Searches the database for the fixture provided (by the key created by the Fixture class),
-     * and returns the JSON string containing all sales if it is found.
-     * This should not throw any errors but, rather, will handle any 
-     * errors and just return null, as if the fixture wasn't found.
+     * and returns the JSON string containing all sales if it is found. 
      * @param {Fixture} fixture - The fixture to be retreieved from the database.
      * @return {Promise<Nullable<string>>} The JSON stored on the DB for the fixture (if present), otherwise null.
+     * @throws Will throw an error if the attempt to retrieve fails, to prevent duplicate entries.
      */
     abstract get(fixture: Fixture): Promise<Nullable<string>>;
 

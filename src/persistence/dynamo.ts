@@ -72,27 +72,22 @@ export default class DynamoDB extends Client {
 
     async get(fixture: Fixture): Promise<Nullable<string>> {
         
-        try {
-            const get = new GetCommand({
-                TableName: this.table,
-                Key: {
-                    Fixture: fixture.id
-                },
-                ConsistentRead: true,
-            });
-            const response = await this.docClient.send(get);
-            if ( response == null ) {
-                return null;
-            }
-            if ( response.Item != null ) {
-                const json: string = response.Item.Sales;
-                return json;
-            }
-            return null;
-        } catch (e) {
-            console.error(e);
+        const get = new GetCommand({
+            TableName: this.table,
+            Key: {
+                Fixture: fixture.id
+            },
+            ConsistentRead: true,
+        });
+        const response = await this.docClient.send(get);
+        if ( response == null ) {
             return null;
         }
+        if ( response.Item != null ) {
+            const json: string = response.Item.Sales;
+            return json;
+        }
+        return null;
 
     }
 
@@ -140,18 +135,23 @@ export default class DynamoDB extends Client {
     async sync(fixture: Fixture): Promise<boolean> {
 
         // First, check if the fixture exists
-        const existing: Nullable<string> = await this.get(fixture);
+        let existing: Nullable<string>;
+        try {
+            existing = await this.get(fixture);
+        } catch (e) {
+            console.error(e);
+            return false;
+        }
         if ( existing == null ) {
-
             // If it doesn't exist, then it's a simple job of adding the fixture
             // to the database, and marking as changed, (if there's actually any 
             // sales dates of course).
             if ( fixture.getActiveSaleCount() > 0 ) {
-                fixture.setChanged(true);
                 const success: boolean = await this.put(fixture);
                 if ( !success ) {
                     return false;
                 }
+                fixture.setChanged(true);
             } else {
                 fixture.setChanged(false);
             }
@@ -162,11 +162,11 @@ export default class DynamoDB extends Client {
             // compare the JSON stored on the DB with the JSON.  If no match, it's changed
             // and update the DB.
             if ( fixture.getJson() != existing ) {
-                fixture.setChanged(true);
                 const success: boolean = await this.update(fixture);
                 if ( !success ) {
                     return false;
                 }
+                fixture.setChanged(true);
             } else {
                 fixture.setChanged(false);
             }

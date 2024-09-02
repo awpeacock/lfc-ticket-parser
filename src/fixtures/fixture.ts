@@ -88,13 +88,13 @@ export default class Fixture {
     find(): number {
 
         if ( this.html == null || this.html == '' ) {
-            throw 'HTML for "' + this.getMatch() + '" is empty';
+            throw new Error('HTML for "' + this.getMatch() + '" is empty');
         }
         // First off, a quick sanity check we've got the right fixture
         const pattern: string = '<title>' + (this.venue == 'A' ? this.opposition.replace('&amp; ', '') + ' V Liverpool Fc' : 'Liverpool Fc V ' + this.opposition.replace('&amp; ', '')) + '.*?</title>'; 
         const title: Nullable<RegExpMatchArray> = this.html.match(pattern);
         if ( title == null ) {
-            throw 'Parsing the wrong fixture';
+            throw new Error('Parsing the wrong fixture');
         }
             
         // Now, find each element representing a sale date, registration date, etc.

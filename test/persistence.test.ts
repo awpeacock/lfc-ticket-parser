@@ -1,4 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
+import { mockClient } from "aws-sdk-client-mock";
+import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
 
 import { FixtureList } from "../src/fixtures";
 import { PersistenceFactory, Client } from "../src/persistence";
@@ -32,11 +34,29 @@ describe('Fixture Persistence', () => {
         for ( const fixture of index.getFixtures() ) {
             await expect(client.sync(fixture)).resolves.toBe(true);
         }
+        expect(index.hasChanged()).toBe(true);
 
         // As this was purely a DB put up to test the connection and commands,
         // tear it down straight away
         await expect(client.destroy()).resolves.toBe(true);
 
     }, 30000);
+
+    it('should return false if it cannot initialise the database', async () => {
+
+        const dbMock = mockClient(DynamoDBClient);
+        dbMock.on(ListTablesCommand).rejects(new Error('Could not list tables'));
+
+        const client: Client = PersistenceFactory.getClient(Database.DYNAMODB, 'JestFailure');
+        await expect(client.init()).resolves.toBe(false);
+
+    });
+
+    it('should return false if it cannot destroy the database', async () => {
+
+        const client: Client = PersistenceFactory.getClient(Database.DYNAMODB, 'JestFailure');
+        await expect(client.destroy()).resolves.toBe(false);
+
+    });
 
 });

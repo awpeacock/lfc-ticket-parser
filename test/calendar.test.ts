@@ -1,7 +1,7 @@
 import {describe, it, expect, jest} from '@jest/globals';
 import * as ICS from 'ics'
 
-import { FixtureList } from "../src/fixtures";
+import { FixtureList, Sale } from "../src/fixtures";
 import setup from "./setup";
 
 setup();
@@ -28,6 +28,14 @@ describe('Converting the fixture list', () => {
         expect(events.includes('Aston Villa (H) : Members Sale')).toBe(false);
         expect(events.match(/Bulk Sale \(Chelsea\\, Brighton and Hove Albion\\, Aston Villa\) : Memb\s*?ers Sale \(13\+\)/gis)).not.toBeNull();
         expect(events.match(/Bulk Sale \(Chelsea\\, Brighton and Hove Albion\\, Aston Villa\) : Memb\s*?ers Sale \(4\+\)/gis)).not.toBeNull();
+    });
+
+    it('should return null if an attempt is made to retrieve an event for an invalid sale', () => {
+
+        const sale: Sale = new Sale('Event in the past', Status.ENDED, null);
+        expect(sale.isValid()).toBe(false);
+        expect(sale.getCalendarEvent()).toBeNull();
+    
     });
 
     it('should throw errors if it cannot product the calendar file', async () => {

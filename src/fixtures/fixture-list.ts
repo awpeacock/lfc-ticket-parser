@@ -27,10 +27,7 @@ export default class FixtureList {
         if ( !process.env.DOMAIN || !process.env.INDEX_URL ) {
             return false;
         }
-        const url: Undefinable<string> = process.env.DOMAIN + process.env.INDEX_URL;
-        if ( !url ) {
-            return false;
-        }
+        const url: string = process.env.DOMAIN + process.env.INDEX_URL;
         try {
             this.html = await fetch(url).then(res => res.text());
         } catch (e) {
@@ -49,7 +46,7 @@ export default class FixtureList {
     find(): number {
 
         if ( this.html == null || this.html == '' ) {
-            throw 'HTML for the "Tickets Availability" index page is empty';
+            throw new Error('HTML for the "Tickets Availability" index page is empty');
         }
         // Every fixture on the page is contained within an A tag with the following class name - loop through all of these
         // to get the pertinent information that will help us to parse them all for selling arrangements
@@ -62,7 +59,7 @@ export default class FixtureList {
             // The "info" block contains all the information about opposition and kick-off
             const info: Nullable<RegExpMatchArray> = section.match(/<div class="info">.*<p>(.+?) v (.+?)<\/p>.*<span>(.+?),.?(\d{1,2}):(\d{2})([ap]m)<\/span>/s);
             if ( info == null || info.length != 7 ) {
-                throw 'Invalid HTML format';
+                throw new Error('Invalid HTML format');
             }
             const home: string = info[1];
             const away: string = info[2];

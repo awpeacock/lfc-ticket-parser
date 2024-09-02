@@ -41,4 +41,7 @@ export default function() {
         })
     }) as jest.Mock<typeof fetch>;
 
+    const error = jest.spyOn(console, 'error');
+    error.mockImplementation(() => null);
+
 }
