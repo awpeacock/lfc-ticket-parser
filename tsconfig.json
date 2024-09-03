@@ -109,7 +109,10 @@
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
   },
   "typedocOptions": {
+    "name": "Liverpool FC Ticket Parser",
+    "readme": "about.md",
     "entryPoints": ["src/fixtures/index.ts", "src/persistence/index.ts", "src/types/global.d.ts"],
+    "excludeNotDocumented": true,
     "out": "docs"
   },
   "include": [
