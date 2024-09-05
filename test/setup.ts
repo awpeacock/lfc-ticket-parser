@@ -11,6 +11,7 @@ export default function() {
         bulk1: fs.readFileSync('./test/mocks/availability-home-bulk-1.html', 'utf-8'),
         bulk2: fs.readFileSync('./test/mocks/availability-home-bulk-2.html', 'utf-8'),
         subject: fs.readFileSync('./test/mocks/availability-away-subject.html', 'utf-8'),
+        euro: fs.readFileSync('./test/mocks/availability-away-euro.html', 'utf-8'),
         inactive: fs.readFileSync('./test/mocks/availability-home-inactive.html', 'utf-8'),
         sold: fs.readFileSync('./test/mocks/availability-away-inactive.html', 'utf-8')
     };
@@ -31,6 +32,8 @@ export default function() {
             html = files.away;
         } else if ( url.includes('manchester-utd') ) {
             html = files.subject;
+        } else if ( url.includes('ac-milan') ) {
+            html = files.euro;
         } else if ( url.includes('nottingham-forest') ) {
             html = files.inactive;
         } else if ( url.includes('manchester-united') ) {

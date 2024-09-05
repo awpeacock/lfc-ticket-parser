@@ -64,6 +64,10 @@ export default class FixtureList {
             const home: string = info[1];
             const away: string = info[2];
             const opposition: string = (home == 'Liverpool FC' ? away : home);
+            // We're only interested in the men's team here (although we could extend it in the future)
+            if ( opposition.toLowerCase().includes('women') ) {
+                continue;
+            }
 
             // Unfortunately, the kick-off date/time is formatted in such a way that Javascript will throw "Invalid Date" 
             // if you try and convert directly, so a bit of interpretation is required (it's the 3:00pm that it doesn't like)

@@ -16,7 +16,7 @@ describe('Parsing the fixture list', () => {
     it('should correctly read from the index page', () => {
         let size: number = 0;
         expect(() => { size = index.find() }).not.toThrow();
-        expect(size).toEqual(6);
+        expect(size).toEqual(7);
     });
 
     it('should successfully parse all fixtures previously found', async () => {
@@ -31,7 +31,7 @@ describe('Parsing the fixture list', () => {
                 valid++;
             }
         });
-        expect(valid).toEqual(4);
+        expect(valid).toEqual(5);
     });
 
     it('should throw errors if it cannot parse the index page', async () => {
@@ -216,6 +216,35 @@ describe('Parsing an active away fixture with potential sales', () => {
 
     it('should successfully generate a JSON string with sales dates', () => {
         expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-manchester-united-a-premier-league","match":"Manchester United (A) - Premier League (2024-25)","sales":[{"description":"ST Holders and Members Sale (7+)","date":"Wed Aug 28 2024 11:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (6+)","date":"Wed Aug 28 2024 13:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (5+)","date":"Wed Aug 28 2024 15:00:00 GMT+0100 (British Summer Time)"}]}}');
+    });
+
+});
+
+describe('Parsing an active away European fixture', () => {
+
+    const fixture: Fixture = new Fixture('/tickets/tickets-availability/ac-milan-v-liverpool-fc-17-sep-2024-0800pm-375', 'AC Milan', 'A', 'Champions League', new Date('2024-09-17 20:00'));
+    fixture.download();
+
+    it('should successfully generate a unique ID', () => {
+        expect(fixture.id).toEqual('2024-ac-milan-a-champions-league');
+    });
+
+    it('should successfully generate a match string', () => {
+        expect(fixture.getMatch()).toEqual('AC Milan (A) - Champions League (2024-25)');
+    });
+
+    it('should successfully parse', () => {
+        let size: number = 0;
+        expect(() => { size = fixture.find() }).not.toThrow();
+        expect(size).toEqual(3);
+    });
+
+    it('should successfully recognise the number of valid sales', () => {
+        expect(fixture.getActiveSaleCount()).toEqual(3);
+    });
+
+    it('should successfully generate a JSON string with sales dates', () => {
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-ac-milan-a-champions-league","match":"AC Milan (A) - Champions League (2024-25)","sales":[{"description":"ST Holders and Members Sale (1+)","date":"Fri Sep 06 2024 11:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Registration","date":"Fri Sep 06 2024 08:15:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale","date":"Wed Sep 11 2024 08:15:00 GMT+0100 (British Summer Time)"}]}}');
     });
 
 });

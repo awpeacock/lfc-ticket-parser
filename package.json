@@ -1,6 +1,6 @@
 {
   "name": "lfc-ticket-parser",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Application to parse the Liverpool FC Ticket Availability page and give up-to-date details of sale dates and criteria.",
   "main": "src/index.ts",
   "scripts": {

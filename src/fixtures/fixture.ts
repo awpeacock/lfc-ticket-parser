@@ -91,10 +91,10 @@ export default class Fixture {
             throw new Error('HTML for "' + this.getMatch() + '" is empty');
         }
         // First off, a quick sanity check we've got the right fixture
-        const pattern: string = '<title>' + (this.venue == 'A' ? this.opposition.replace('&amp; ', '') + ' V Liverpool Fc' : 'Liverpool Fc V ' + this.opposition.replace('&amp; ', '')) + '.*?</title>'; 
+        const pattern: RegExp = new RegExp('<title>' + (this.venue == 'A' ? this.opposition.replace('&amp; ', '') + ' V Liverpool Fc' : 'Liverpool Fc V ' + this.opposition.replace('&amp; ', '')) + '.*?</title>', 'i'); 
         const title: Nullable<RegExpMatchArray> = this.html.match(pattern);
         if ( title == null ) {
-            throw new Error('Parsing the wrong fixture');
+            throw new Error('Parsing the wrong fixture - expecting "' + this.opposition + '"');
         }
             
         // Now, find each element representing a sale date, registration date, etc.
@@ -104,13 +104,22 @@ export default class Fixture {
 
             // Any tier one fixtures or away games will have pre-requisites (how many credits recorded) for the sale.
             // Make sure to capture this and include in the description to make the information useful.
+            // Of course, just to be awkward, some times they use numbers, some times they use the words!
             let credits: number = 0;
-            const prereqs: Nullable<RegExpMatchArray> = match[2].match(/recorded (\d+?)[+| or more]/);
+            //const prereqs: Nullable<RegExpMatchArray> = match[2].match(/recorded (\d+?)[+| or more]/);
+            const prereqs: Nullable<RegExpMatchArray> = match[2].match(/recorded (all )*(.+?)((\+)|( or more)|( of))/);
             if ( prereqs != null ) {
-                credits = parseInt(prereqs[1]);
+                if ( !prereqs[2].match(/^d+$/) ) {
+                    // Max credits we can ever need must surely be 19 (every home or away game in a league season)
+                    const words: Array<string> = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+                    for ( let w = 0; w < 19; w++ ) {
+                        prereqs[2] = prereqs[2].replace(words[w], String(w+1));
+                    }
+                }
+                credits = parseInt(prereqs[2]);
             }
 
-            const description: string = match[1].replace(/SEASON TICKET HOLDERS/i, 'ST Holders').replace(/OFFICIAL MEMBERS/i, 'Members').replace(/AND/i, 'and') + ((!match[1].endsWith('Sale') && !match[1].endsWith('Registration')) ? ' Sale' : '') + (credits > 0 ? ' (' + credits + '+)' : '');
+            const description: string = match[1].replace(/SEASON TICKET HOLDERS/i, 'ST Holders').replace(/OFFICIAL MEMBERS/i, 'Members').replace(/REGISTRATION/i, 'Registration').replace(/AND/i, 'and') + ((!match[1].toLowerCase().endsWith('sale') && !match[1].toLowerCase().endsWith('registration')) ? ' Sale' : '') + (credits > 0 ? ' (' + credits + '+)' : '');
             const status: Status = (
                 (match[3].toLowerCase().indexOf('ended') > -1 || match[3].toLowerCase().indexOf('sold out') > -1) ? Status.ENDED : (
                 (match[3].toLowerCase().indexOf('available') > -1 || match[3].toLowerCase().indexOf('buy now') > -1) ? Status.AVAILABLE : 
