@@ -1,8 +1,8 @@
 import {describe, it, expect, jest} from '@jest/globals';
 import * as fs from 'fs';
 
-import { Fixture, FixtureList, Sale } from "../src/fixtures";
-import setup from "./setup";
+import { Fixture, FixtureList, Sale } from "../fixtures";
+import setup from "../setupTests";
 
 setup();
 
@@ -65,7 +65,7 @@ describe('Parsing the fixture list', () => {
 
         const download = jest.spyOn(Fixture.prototype, 'download');
         download.mockImplementationOnce(async function(this: Fixture) { 
-            this['html'] = fs.readFileSync('./test/mocks/availability-home-multiple.html', 'utf-8');
+            this['html'] = fs.readFileSync('./src/__mocks__/availability-home-multiple.html', 'utf-8');
             return true;
         });
         // This should catch if a fixture page cannot parse
@@ -122,7 +122,7 @@ describe('Parsing an active home fixture', () => {
         const faulty: Fixture = new Fixture('/tickets/tickets-availability/liverpool-fc-v-brentford-25-aug-2024-0430pm-342', 'Brentford', 'H', 'Premier League', new Date('2024-08-25 16:30'));
         const download = jest.spyOn(faulty, 'download');
         download.mockImplementationOnce(async function(this: Fixture) { 
-            this['html'] = fs.readFileSync('./test/mocks/availability-home-multiple.html', 'utf-8');
+            this['html'] = fs.readFileSync('./src/__mocks__/availability-home-multiple.html', 'utf-8');
             return true;
         });
 

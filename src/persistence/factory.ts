@@ -9,14 +9,15 @@ export default class PersistenceFactory {
     /**
      * Returns a Client from the parameters provided.
      * @param {Database} db - The type of database to be used.
-     * @param {string} table - The database table to contain the fixtures.
+     * @param {string} fixtures - The database table to contain the fixtures.
+     * @param {string} backup - The database table to contain the ICS backup.
      * @returns {Client} An initialised Client class with all methods to persist/retrieve fixtures.
      */
-    static getClient(db: Database, table: string): Client {
+    static getClient(db: Database, fixtures: string, backup: string): Client {
 
         switch ( db ) {
             case Database.DYNAMODB: {
-                return new DynamoDB(table);
+                return new DynamoDB(fixtures, backup);
             }
         }
 

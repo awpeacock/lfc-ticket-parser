@@ -34,3 +34,11 @@ declare const enum Database {
     /** AWS DynamoDB */
     DYNAMODB = 'DynamoDB'
 }
+
+/** Interface representing the types of tables that are used by a DB client. */
+interface TableTypes {
+    /** Represents the table to be used for storing fixtures. */
+    fixtures: string;
+    /** Represents the table to be used for storing backups. */
+    backup: string;
+} 

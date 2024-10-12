@@ -1,12 +1,12 @@
-import {describe, it, expect, beforeAll, beforeEach} from '@jest/globals';
+import { describe, it, expect, beforeAll, beforeEach } from '@jest/globals';
 import { mockClient } from "aws-sdk-client-mock";
 import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
-import { Fixture, FixtureList } from "../src/fixtures";
-import { PersistenceFactory, Client } from "../src/persistence";
+import { Fixture, FixtureList } from "../fixtures";
+import { PersistenceFactory, Client } from "../persistence";
 
-import setup from "./setup";
+import setup from "../setupTests";
 
 setup();
 
@@ -16,13 +16,14 @@ describe('Checking for amendments', () => {
     let fixtures: Array<Fixture> = [];
 
     const table: string = 'JESTTABLE';
+    const backup: string = 'JESTBACKUP';
     const dbMock = mockClient(DynamoDBClient);
     dbMock.on(ListTablesCommand).resolves({
-        TableNames: [ table ]
+        TableNames: [ table, backup ]
     });
     const ddbMock = mockClient(DynamoDBDocumentClient);
 
-    const client: Client = PersistenceFactory.getClient(Database.DYNAMODB, table);
+    const client: Client = PersistenceFactory.getClient(Database.DYNAMODB, table, backup);
     client.init();
 
     beforeAll(async () => {
@@ -44,7 +45,6 @@ describe('Checking for amendments', () => {
             Item: undefined
         });
         ddbMock.on(PutCommand).resolves({});
-
         await expect(client.sync(fixtures[0])).resolves.toBe(true);
         expect(fixtures[0].hasChanged()).toBe(true);
 
@@ -91,19 +91,15 @@ describe('Checking for amendments', () => {
             Item: undefined
         });
         ddbMock.on(PutCommand).resolves({});
-
         for ( let f = 0; f < fixtures.length; f++ ) {
-
             ddbMock.on(GetCommand).resolves({
                 Item: { 
                     Fixture: fixtures[f].id,
                     Sales: (f == 0) ? null : fixtures[f].getJson()
                 },
             });
-    
             await expect(client.sync(fixtures[f])).resolves.toBe(true);
             expect(fixtures[f].hasChanged()).toBe(f == 0 ? true : false);
-
         }
         expect(index.hasChanged()).toBe(true);
 
@@ -112,19 +108,15 @@ describe('Checking for amendments', () => {
     it('should successfully mark the fixture list as unchanged if no fixtures in a list have changed', async () => {
 
         ddbMock.on(PutCommand).resolves({});
-
         for ( let f = 0; f < index.getFixtures().length; f++ ) {
-
             ddbMock.on(GetCommand).resolves({
                 Item: { 
                     Fixture: fixtures[0].id,
                     Sales: fixtures[f].getJson()
                 },
             });
-
             await expect(client.sync(fixtures[f])).resolves.toBe(true);
             expect(fixtures[f].hasChanged()).toBe(false);
-
         }
         expect(index.hasChanged()).toBe(false);
 
@@ -133,7 +125,6 @@ describe('Checking for amendments', () => {
     it('should throw an error if it is unable to retrieve a fixture due to failure', async () => {
 
         ddbMock.on(GetCommand).rejects(new Error('Unable to retrieve data'));
-
         await expect(client.get(fixtures[0])).rejects.toThrow();
         expect(fixtures[0].hasChanged()).toBe(false);
 
@@ -142,7 +133,6 @@ describe('Checking for amendments', () => {
     it('should return false if it is unable to add a fixture to the database', async () => {
 
         ddbMock.on(PutCommand).rejects(new Error('Unable to store data'));
-
         await expect(client.put(fixtures[0])).resolves.toBe(false);
         expect(fixtures[0].hasChanged()).toBe(false);
 
@@ -151,7 +141,6 @@ describe('Checking for amendments', () => {
     it('should return false if it is unable to update a fixture to the database', async () => {
 
         ddbMock.on(UpdateCommand).rejects(new Error('Unable to update data'));
-
         await expect(client.update(fixtures[0])).resolves.toBe(false);
         expect(fixtures[0].hasChanged()).toBe(false);
 
@@ -163,7 +152,6 @@ describe('Checking for amendments', () => {
             Item: undefined
         });
         ddbMock.on(PutCommand).rejects(new Error('Unable to store data'));
-
         await expect(client.sync(fixtures[0])).resolves.toBe(false);
         expect(fixtures[0].hasChanged()).toBe(false);
 
@@ -175,12 +163,10 @@ describe('Checking for amendments', () => {
             },
         });
         ddbMock.on(UpdateCommand).rejects(new Error('Unable to update data'));
-
         await expect(client.sync(fixtures[3])).resolves.toBe(false);
         expect(fixtures[0].hasChanged()).toBe(false);
-
+        
         ddbMock.on(GetCommand).rejects(new Error('Unable to retrieve data'));
-
         await expect(client.sync(fixtures[0])).resolves.toBe(false);
         expect(fixtures[0].hasChanged()).toBe(false);
 

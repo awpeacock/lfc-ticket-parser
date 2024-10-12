@@ -106,7 +106,6 @@ export default class Fixture {
             // Make sure to capture this and include in the description to make the information useful.
             // Of course, just to be awkward, some times they use numbers, some times they use the words!
             let credits: number = 0;
-            //const prereqs: Nullable<RegExpMatchArray> = match[2].match(/recorded (\d+?)[+| or more]/);
             const prereqs: Nullable<RegExpMatchArray> = match[2].match(/recorded (all )*(.+?)((\+)|( or more)|( of))/);
             if ( prereqs != null ) {
                 if ( !prereqs[2].match(/^d+$/) ) {

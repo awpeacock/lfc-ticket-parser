@@ -1,26 +1,31 @@
 import Fixture from "../fixtures/fixture";
+import Backup from "./backup";
 
 /**
  * Abstract class which all database clients must extend, containing all methods needed
  * to persist fixtures and sales dates, in order to determine if data has changed since the
- * last run of the parser (thus preventing unnecessary spamming of the same ICS entries.
+ * last run of the parser (thus preventing unnecessary spamming of the same ICS entries;
+ * and backups of the data that the parser attempted to send, to prevent sales information
+ * being unsent.
  */
 export default abstract class Client {
 
-    /** The name of the table on which to write fixture details. */
-    protected table: string;
+    /** The name of the tables on which to write fixture and backup details. */
+    protected tables: TableTypes = {fixtures: '', backup: ''};
 
     /**
      * Creates a Client from the parameters provided.
-     * @param {string} table - The database table to contain the fixtures.
+     * @param {string} fixtures - The database table to contain the fixtures.
+     * @param {string} backup - The database table to contain the ICS backup.
      */
-    constructor(table: string) {
-        this.table = table;
+    constructor(fixtures: string, backup: string) {
+        this.tables.fixtures = fixtures;
+        this.tables.backup = backup;
     }
 
     /**
      * Initialises the client - if this is the first time the parser has
-     * run, it will automatically create the table to store fixture data.
+     * run, it will automatically create the tables to store fixture and backup data.
      * This should not throw any errors but, rather, will handle any 
      * errors and just return false.
      * @return {Promise<boolean>} A boolean indicating the success, or otherwise, of the operation.
@@ -28,7 +33,7 @@ export default abstract class Client {
     abstract init(): Promise<boolean>;
 
     /**
-     * Deletes the table storing fixture data.  This should not throw any errors but, rather, will handle any 
+     * Deletes the tables storing fixture and backup data.  This should not throw any errors but, rather, will handle any 
      * errors and just return false.
      * @return {Promise<boolean>} A boolean indicating the success, or otherwise, of the operation.
      */
@@ -72,5 +77,30 @@ export default abstract class Client {
      * @return {Promise<boolean>} A boolean indicating the success, or otherwise, of the operation.
      */
     abstract sync(fixture: Fixture): Promise<boolean>;
+
+    /**
+     * Stores the string representing the ICS file to be sent as a result of the parser, and the
+     * date the parser first attempted to send it.
+     * This should not throw any errors but, rather, will handle any errors and just return false.
+     * @param {Backup} events - The Backup containing events in ICS format that represents sales dates.
+     * @return {Promise<boolean>} A boolean indicating the success, or otherwise, of the operation.
+     */
+    abstract backup(events: Backup): Promise<boolean>;
+
+    /**
+     * Retrieves an array of Backup objects representing an ICS file that had previously failed to send, 
+     * and updates the retry count. This should not throw any errors but, rather, will handle any errors 
+     * and just return false.
+     * @return {Promise<Array<Backup>>} The backup(s) of sales dates in ICS format.
+     */
+    abstract restore(): Promise<Array<Backup>>;
+
+    /**
+     * Removes any entries relating to a failed attempt to email an ICS file. This should not 
+     * throw any errors but, rather, will handle any errors and just return false.
+     * @param {Array<string>} dates - An array of all the backup "keys" in the database.
+     * @return {Promise<boolean>} A boolean indicating the success, or otherwise, of the operation.
+     */
+    abstract reset(dates: Array<string>): Promise<boolean>;
 
 }

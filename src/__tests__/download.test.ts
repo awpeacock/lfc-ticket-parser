@@ -1,7 +1,7 @@
 import {describe, it, expect, jest} from '@jest/globals';
 import dotenv, { DotenvConfigOutput } from 'dotenv';
 
-import { Fixture, FixtureList } from "../src/fixtures";
+import { Fixture, FixtureList } from "../fixtures";
 
 describe('Tickets Availability', () => {
 

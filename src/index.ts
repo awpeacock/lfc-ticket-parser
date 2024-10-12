@@ -1,30 +1,62 @@
 import dotenv from 'dotenv';
-import nodemailer from 'nodemailer';
-import { Attachment } from 'nodemailer/lib/mailer';
-import SMTPTransport, { MailOptions } from 'nodemailer/lib/smtp-transport';
+import * as ICS from 'ics'
 
 import { FixtureList } from "./fixtures";
-import { PersistenceFactory, Client } from './persistence';
+import { PersistenceFactory, Client, Backup } from './persistence';
+import { Email } from './distribution';
 
 class TicketParser {
 
-    static async parse() {
+    static async parse(): Promise<void> {
 
         dotenv.config();
+        const email:Email = new Email();
         const fixtures: FixtureList = new FixtureList();
 
         // Initialise the DB in a separate try/catch loop - if an unexpected error
         // occurs we don't want it to impact sending the email
-        let client: Client, persistable: boolean = false;
-        try {
+        let client: Client, persistable: boolean = false, retry: Nullable<Backup> = null;
+        const keys: Array<string> = new Array<string>();
+            try {
             const db: Database = process.env.DB_CLIENT as Database;
             const table: string = process.env.DB_TABLE as string;
+            const backup: string = process.env.DB_BACKUP as string;
+            if ( db == null || table == null || backup == null ) {
+                throw new Error('No database variables set');
+            }
             console.log('+ Initialising "' + db + '" database');
-            client = PersistenceFactory.getClient(db, table);
+            client = PersistenceFactory.getClient(db, table, backup);
             persistable = await client.init();
+
+            // Before we do anything else, let's just check if we have a backup waiting - if
+            // one exists then this has been fired as a retry attempt, and we just resend
+            // that, and quit
+            const backups: Array<Backup> = await client.restore();
+            if ( backups.length > 0 ) {
+                retry = backups[backups.length - 1];
+                for ( let b = 0; b < backups.length - 1; b++ ) {
+                    retry.merge(backups[b]);
+                    keys.push(backups[b].getKey());
+                }
+                keys.push(retry.getKey());
+                if ( retry.isToday() ) {
+                    console.log('+ Retrying existing ICS file');
+                    email.construct(retry.getEvents());
+                    console.log('+ Emailing ICS file');
+                    const success: boolean = await email.sendEvents();
+                    if ( success ) {
+                        console.log('+ Removing backup from database');
+                        client!.reset(keys);
+                    } else {
+                        console.error('Unable to send email');
+                    }
+                    return;
+                }
+            }
+
         } catch (e) {
             console.error(e);
-            TicketParser.email('Error trying to initialise DB', 'The following error occurred:\r\n' + e + '\r\nThe email should still send but may contain details already sent.');
+            email.sendError('Error trying to initialise DB - The email should still send but may contain details already sent.', e);
         }
 
         // Now loop through the fixtures, finding sales dates, comparing them to already persisted ones,
@@ -52,21 +84,30 @@ class TicketParser {
                     }
                 }
 
+                let events: Array<ICS.EventAttributes> = new Array<ICS.EventAttributes>();
                 if ( fixtures.hasChanged() ) {
                     console.log('+ Generating ICS file');
-                    const ics: string = fixtures.getCalendarEvents();
+                    events = fixtures.getChanges();
+                    if ( persistable ) {
+                        console.log('+ Storing email contents in case of failure');
+                        const backup: Backup = new Backup(new Date(), events);
+                        client!.backup(backup);
+                        keys.push(backup.getKey());
+                    }
+                }
+                if ( retry != null ) {
+                    events = events.concat(retry.getEvents());
+                }
+                if ( events.length > 0 ) {
                     console.log('+ Emailing ICS file');
-                    const date: string = new Date().getDate() + '/' + (new Date().getMonth()+1) + '/' + new Date().getFullYear();
-                    const attachment: Attachment = {
-                        filename: 'lfcinfo.ics',
-                        content: ics
-                    };
-                    const success: boolean = await TicketParser.email(
-                        'Latest LFC ticket dates (' + date + ')', 
-                        'Please find attached the latest sales dates for LFC fixtures.  Load the file using your preferred calendar software.',
-                        attachment
-                    );
-                    if ( !success ) {
+                    email.construct(events);
+                    const success: boolean = await email.sendEvents();
+                    if ( success ) {
+                        if ( persistable ) {
+                            console.log('+ Removing backup from database');
+                            client!.reset(keys);
+                        }
+                    } else {
                         console.error('Unable to send email');
                     }
                 } else {
@@ -77,56 +118,8 @@ class TicketParser {
             console.log('----------------------------------------');
         } catch (e) {
             console.error(e);
-            TicketParser.email('Error trying to send LFC sales email', 'The following error occurred:\r\n' + e);
+            email.sendError('Error trying to send LFC sales email', e);
         }
-    }
-
-    static async email(subject: string, body: string, attachment?: Attachment): Promise<boolean> {
-
-        try {
-
-            // If we've not managed to get the email config, no point continuing - this is dead
-            if ( !process.env.EMAIL_HOST ) {
-                return false;
-            }
-
-            const smtpOptions: SMTPTransport.Options = {
-                host: process.env.EMAIL_HOST,
-                port: parseInt(process.env.EMAIL_PORT as string),
-                secure: process.env.EMAIL_SECURE === 'true', 
-                auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-                }
-            };
-            const mailOptions: MailOptions = {
-                from: process.env.EMAIL_FROM,
-                to: process.env.EMAIL_TO,
-                subject: subject,
-                text: body
-            };
-            if ( attachment ) {
-                mailOptions.attachments = [attachment];
-            }
-
-            const transporter: nodemailer.Transporter = nodemailer.createTransport(smtpOptions);
-            const info: SMTPTransport.SentMessageInfo = await transporter.sendMail(mailOptions);
-            if ( info.response.includes('250 OK') ) {
-                return true;
-            } else {
-                console.error('Response from mail server: ', info.response);
-                return false;
-            }
-
-        } catch (e) {
-
-            // We don't want to throw any errors in here, as we could get ourselves in trouble trying
-            // to email ourselves about any errors faced sending emails!
-            console.error(e);
-            return false;
-
-        }
-
     }
 
 }
