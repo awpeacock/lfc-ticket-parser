@@ -34,6 +34,7 @@ In order for the parser to determine whether fixture details have changed, it ne
 ```properties
 DB_CLIENT=DynamoDB
 DB_TABLE=<Table Name>
+DB_BACKUP=<Backup Table Name>
 ```
 
 The following properties are only needed if you run the parser remotely from where the database is hosted:
