@@ -74,4 +74,20 @@ export default class Sale {
 
     }
 
+    /**
+     * Compares this sale with another sale and returns whether there is any difference.
+     * @param {Sale} sale - The sale with which to compare this instance.
+     * @return {boolean} An boolean indicating whether the two sales are identical  or not.
+     */
+    equals(sale: Sale): boolean {
+
+        const description: boolean = (this.description == sale.description);
+        const status: boolean = (this.status == sale.status);
+        const date: boolean = ((this.date == null && sale.date == null) || (this.date != null && sale.date != null && this.date!.getFullYear() == sale.date!.getFullYear() && this.date!.getMonth() == sale.date!.getMonth() && this.date!.getDate() == sale.date!.getDate()));
+        const time: boolean = ((this.date == null && sale.date == null) || (this.date != null && sale.date != null && this.date!.getHours() == sale.date!.getHours() && this.date!.getMinutes() == sale.date!.getMinutes()));
+
+        return (description && status && date && time);
+
+    }
+
 }

@@ -172,6 +172,10 @@ export default class DynamoDB extends Client {
             existing = await this.get(fixture);
         } catch (e) {
             console.error(e);
+            // Always set as changed if we can't retrieve it, best to work on
+            // theory of sending emails when we shouldn't is better than not
+            // when we should and potentially missing a sale.
+            fixture.setChanged(true);
             return false;
         }
         if ( existing == null ) {
@@ -180,26 +184,26 @@ export default class DynamoDB extends Client {
             // to the database, and marking as changed, (if there's actually any 
             // sales dates of course).
             if ( fixture.getActiveSaleCount() > 0 ) {
+                fixture.setChanged(true);
                 const success: boolean = await this.put(fixture);
                 if ( !success ) {
                     return false;
                 }
-                fixture.setChanged(true);
             } else {
                 fixture.setChanged(false);
             }
 
         } else {
 
-            // Otherwise, if it does exist, it's also a relatively straightforward job -
-            // compare the JSON stored on the DB with the JSON.  If no match, it's changed
-            // and update the DB.
-            if ( fixture.getJson() != existing ) {
+            // Otherwise, if it does exist, compare the JSON stored on the DB with the JSON.  If no match, 
+            // first check whether any details on the sales have changed or if it's just a multi-day sale
+            // and the first days have passed.  If the former, then update the DB.
+            if ( !fixture.equals(existing) ) {
+                fixture.setChanged(true);
                 const success: boolean = await this.update(fixture);
                 if ( !success ) {
                     return false;
                 }
-                fixture.setChanged(true);
             } else {
                 fixture.setChanged(false);
             }

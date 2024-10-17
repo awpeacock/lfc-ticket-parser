@@ -211,6 +211,67 @@ export default class Fixture {
     }
 
     /**
+     * Compares the fixture's sales data with that contained within a JSON and returns whether
+     * there is a difference between any active dates in either (note: it will not mark a
+     * fixture as changed if either has an inactive sale that is not in the other as that is
+     * irrelevant to the functionality of the parser).
+     * @param {string} json - The JSON string produced by a Fixture's getJson method.
+     * @return {boolean} An boolean indicating whether the two representations of a fixture are the same or not.
+     */
+    equals(json: string): boolean {
+
+        const parsed: {fixture:{ id: string, sales: [{description: string, date: string}]}} = JSON.parse(json);
+        const fixture: { id: string, sales: [{description: string, date: string}]} = parsed.fixture;
+        const today: Date = new Date();
+
+        // First, loop through this new version of the fixture - if there's anything in here that isn't in the DB then we want
+        // to go off this new version.
+        for ( let s1 = 0; s1 < this.sales.length; s1++ ) {
+            // If the sale has ended/isn't valid then we don't care if it matches, move on to the next one
+            if ( !this.sales[s1].isValid() ) {
+                continue;
+            }
+            let found: boolean = false;
+            for ( let s2 = 0; s2 < fixture.sales.length; s2++ ) {
+                const sale: Sale = new Sale(fixture.sales[s2].description, Status.PENDING, new Date(fixture.sales[s2].date));
+                if ( this.sales[s1].equals(sale) ) {
+                    found = true;
+                    break;
+                }
+            }
+            // No point carrying on if the DB doesn't have this sales - 
+            // the data for this fixture has changed and we need to reflect
+            // what's on the site
+            if ( !found ) {
+                return false;
+            }
+        }
+        
+        // Next, loop through the sales on the DB - if the sales follow logic, then there should
+        // be more here (if they're not all the same) as sales will disappear off the site as they finish
+        for ( let s1 = 0; s1 < fixture.sales.length; s1++ ) {
+            let found: boolean = false;
+            for ( let s2 = 0; s2 < this.sales.length; s2++ ) {
+                const sale: Sale = new Sale(fixture.sales[s1].description, Status.PENDING, new Date(fixture.sales[s1].date));
+                if ( this.sales[s2].equals(sale) ) {
+                    found = true;
+                    break;
+                }
+            }
+            // If we haven't found a match, check if it's because the date has passed - if it has,
+            // that explains it and means we aren't looking at a change
+            if ( !found ) {
+                if ( today < new Date(fixture.sales[s1].date) ) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+
+    }
+
+    /**
      * Sets whether the fixture has changed since this was last run.
      * @param {boolean} changed - Whether the sales dates for this fixture have changed.
      */

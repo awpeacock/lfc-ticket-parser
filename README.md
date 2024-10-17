@@ -25,7 +25,7 @@ EMAIL_PORT=465
 EMAIL_SECURE=true
 EMAIL_USER=<SMTP Account Username>
 EMAIL_PASS=<SMTP Account Password>
-EMAIL_FROM=LFC Ticket Parser<SMTP Account Email Address>
+EMAIL_FROM=<SMTP Account Email Address>
 EMAIL_TO=<Recipient Email Address>
 ```
 
