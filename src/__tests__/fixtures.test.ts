@@ -16,7 +16,7 @@ describe('Parsing the fixture list', () => {
     it('should correctly read from the index page', () => {
         let size: number = 0;
         expect(() => { size = index.find() }).not.toThrow();
-        expect(size).toEqual(7);
+        expect(size).toEqual(8);
     });
 
     it('should successfully parse all fixtures previously found', async () => {
@@ -31,7 +31,7 @@ describe('Parsing the fixture list', () => {
                 valid++;
             }
         });
-        expect(valid).toEqual(5);
+        expect(valid).toEqual(6);
     });
 
     it('should throw errors if it cannot parse the index page', async () => {

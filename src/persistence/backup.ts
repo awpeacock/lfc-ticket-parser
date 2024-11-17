@@ -56,7 +56,11 @@ export default class Backup {
      * @param {Backup} backup - The Backup object whose sales dates are to be added to this instance.
      */
     merge(backup: Backup): void {
-        this.events = this.events.concat(backup.events);
+        for ( let e = 0; e < backup.events.length; e++ ) {
+            if ( !this.events.includes(backup.events[e]) ) {
+                this.events.push(backup.events[e]);
+            }
+        }
     }
 
     /**

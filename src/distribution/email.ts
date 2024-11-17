@@ -1,13 +1,19 @@
+import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import { Attachment } from 'nodemailer/lib/mailer';
 import SMTPTransport, { MailOptions } from 'nodemailer/lib/smtp-transport';
 import * as ICS from 'ics'
+
+dotenv.config();
 
 /**
  * Class representing the information that will make up the email sent out
  * by the parser, and functions to send it (or send error emails).
  */
 export default class Email {
+
+    /** An array of validated ICS events that make up the ICS object to be emailed. */
+    private events: Array<ICS.EventAttributes> = [];
 
     /** The ICS object that contains all the information about sales dates. */
     private ics: Undefinable<ICS.ReturnObject>;
@@ -31,48 +37,28 @@ export default class Email {
     construct(events: Array<ICS.EventAttributes>) {
 
         // Before we create the calendar file, we should loop through all the events and find any
-        // that occur on the same day (i.e. bulk sales) - we don't want to create multiple calendar
-        // entries for these, just one
-        const duplicates: Array<number> = [];
-        for ( let e1 = 0; e1 < (events.length - 1); e1++ ) {
-            for ( let e2 = (e1 + 1); e2 < events.length; e2++ ) {
-                if ( events[e1].start.toString() == events[e2].start.toString() ) {
-                    // Manipulating the array now could cause issues while we're looping through it,
-                    // so add the index to an array to be removed later and update the original
+        // that occur on the same day (i.e. bulk sales or multiple registrations per credit) - we 
+        // don't want to create multiple calendar entries for these, just one
+        const unique: Array<ICS.EventAttributes> = Email.removeDuplicates(events);
 
-                    // Before we do anything fancy, check it isn't the same sale for the same
-                    // fixture (might come through from a backed up email attempt)
-                    if ( JSON.stringify(events[e1]) == JSON.stringify(events[e2]) ) {
-                        duplicates.push(e2);
-                        continue;
-                    }
-
-                    // First, setup two regular expressions - one for all the titles as they currently are,
-                    // and one to match the title of the first event as it will be once it's been replaced
-                    const original: RegExp = /^(.+?)\s\(H\)(.+)$/, replaced: RegExp = /^Bulk Sale \((.+?)\)(.+)$/;
-                    // Then, use the original regex to get the name of the opposition for the second event on the same date
-                    const match: Nullable<RegExpMatchArray> = events[e2].title!.match(original);
-                    const opposition: string = match![1];
-                    // Now, work out which regex to use for our first event depending upon if it's already been
-                    // manipulated, and tweak it to be a bulk sale with the names of all the games included
-                    if ( !events[e1].title!.startsWith('Bulk Sale') ) {
-                        events[e1].title = events[e1].title!.replace(original, 'Bulk Sale ($1, ' + opposition + ')$2');
-                    } else {
-                        events[e1].title = events[e1].title!.replace(replaced, 'Bulk Sale ($1, ' + opposition + ')$2');
-                    }
-
-                    // Finally, add the index for the second occurrence to the array to be removed after all have
-                    // been looped through
-                    duplicates.push(e2);
-                }
+        // Now that we're including the possibility of dates in the past (because of backups) make
+        // sure all dates are in the future or ICS.createEvents will fall over
+        const future: Array<ICS.EventAttributes> = [];
+        for ( let e = 0; e < unique.length; e++ ) {
+            const year: number = (unique[e].start as Array<number>).at(0)!,
+                  month: number = (unique[e].start as Array<number>).at(1)! - 1,
+                  day: number = (unique[e].start as Array<number>).at(2)!,
+                  hour: number = (unique[e].start as Array<number>).at(3)!,
+                  minute: number = (unique[e].start as Array<number>).at(4)!;
+            const date: Date = new Date(year, month, day, hour, minute);
+            const today: Date = new Date();
+            if (date > today ) {
+                future.push(unique[e]);
             }
         }
-        // Now, loop through the array of dupes and remove them from the array (backwards, so the indexes are kept in tact)
-        for ( let d = duplicates.length - 1; d >= 0; d-- ) {
-            events.splice(duplicates[d], 1);
-        }
-
-        const response: ICS.ReturnObject = ICS.createEvents(events);
+        this.events = future;
+        
+        const response: ICS.ReturnObject = ICS.createEvents(this.events);
         if ( response.error ) {
             throw(response.error);
         }
@@ -86,6 +72,13 @@ export default class Email {
      * @throws Will throw an error if anything fails while attempting to send the email.
      */
     async sendEvents(): Promise<boolean> {
+
+        // Do not attempt to send an empty ICS file, will error when recipients try to do
+        // anything with it (but return true - it hasn't failed so shouldn't flag as an
+        // error anywhere)
+        if ( this.events.length == 0 ) {
+            return true;
+        }
 
         const date: string = new Date().getDate() + '/' + (new Date().getMonth()+1) + '/' + new Date().getFullYear();
         const subject: string = Email.SUBJECT_SALES + ' (' + date + ')';
@@ -166,6 +159,191 @@ export default class Email {
 
         }
     
+    }
+
+    /**
+     * Takes an array of events, finds any that occur at the same time (e.g. bulk sales and registrations)
+     * and reduces them to one event. 
+     * @param {Array<ICS.EventAttributes>} events - The array of sales dates to be parsed.
+     * @return {Array<ICS.EventAttributes>} The parsed array with duplicates concatenated.
+     */
+    private static removeDuplicates(events: Array<ICS.EventAttributes>): Array<ICS.EventAttributes> {
+
+        // No point doing anything with an empty array - for starters, it'll just throw an error
+        // instantly
+        if ( events.length == 0 ) {
+            return events;
+        }
+
+        let log: string = 'Removing duplicates - ' + events.length + ' entries currently\n';
+        
+        // Create a new array to contain all unique events, so that we don't manipulate the
+        // original array while working our way through it - we can safely start thus array
+        // with the first event.
+        const cleansed: Array<ICS.EventAttributes> = [events[0]];
+        log += '+ "' + cleansed[0].title + '" added to cleansed array\n';
+
+        for ( let e = 1; e < events.length; e++ ) {
+
+            // Start off with the assumption that each event is unique, and will be added to
+            // the array at the end unless proved otherwise.
+            let unique: boolean = true;
+
+            // And now loop through all the events already safely added to the cleansed array
+            // to check this event against for uniqueness
+            for ( let u = 0; u < cleansed.length; u++ ) {
+
+                log += '+ Testing "' + events[e].title + '" against "' + cleansed[u].title + '"\n';
+                // Before we do anything fancy, check it isn't the same sale for the same
+                // fixture (might come through from a backed up email attempt) - no point
+                // carrying on if so
+                if ( JSON.stringify(events[e]) == JSON.stringify(cleansed[u]) ) {
+                    unique = false;
+                    log += '   - Identical sale\n';
+                    break;
+                }
+
+                // Potential for a lot of repeated code here - we need a data object for key data from 
+                // the untouched event string, and a search/replace pairing to come out of these
+                // checks (to convert the title of the original "cleansed" event)
+                type KeyEventData = {
+                    opposition: string,
+                    criteria: string
+                }
+                type SearchReplace = {
+                    search: RegExp,
+                    replace: string
+                };
+
+                // First bit of consistent code is that to get the opposition and criteria for the current event
+                const extractOpposition = (title: string): KeyEventData => {
+                    // Setup a regular expression to catch the new title as it currently is
+                    const search: RegExp = /^(.+?)\s\(H\)\s:\s(.+?)(\((.*?)\))?$/;
+                    // Then, use it to get the name of the opposition for the event being tested
+                    const match: Nullable<RegExpMatchArray> = title!.match(search);
+                    const opposition: string = match![1], criteria: string = match![4];
+                    return {
+                        opposition: opposition,
+                        criteria: criteria
+                    };
+                }
+
+                // Then, we need a method to merge registration...
+                const tidyRegistration = (original: ICS.EventAttributes, current: ICS.EventAttributes): SearchReplace => {
+                    let search: RegExp;
+                    let replace: string;
+
+                    const data: KeyEventData = extractOpposition(current.title!);
+
+                    // Bulk sales are always on separate date/times depending on credits, but registrations are all
+                    // at the same time so we need to pick out the different criteria and compare
+                    search = /^(.+?)\s\(H\)\s:\s([^0-9]+)((\d{1,2}\+)?)(.*?)Registration(?:\s\()?(\d{1,2}\+)?.*?$/;
+                    const match: Nullable<RegExpMatchArray> = current.title!.match(search);
+                    // If no criteria is in the string then it must be a general sale
+                    let criteria: string = 'General';
+                    // According to the type of sale, the criteria can be in different groups (and mark
+                    // the group index for RegEx callback later)
+                    let index = 3;
+                    if ( match != null ) {
+                        if ( match[3] ) {
+                            criteria = match[3];
+                        } else if ( match[6] ) {
+                            index = 6;
+                            criteria = match[6];
+                        }
+                    }
+                    // If it is the same credits criteria as before then we don't need to add
+                    if ( original.title!.includes(criteria) ) {
+                        criteria = '';
+                    } else {
+                        criteria = ', ' + criteria;
+                    }
+
+                    // Now we have everything we need to create the SearchReplace pair - there will
+                    // need to be different values for each depending on if this is the first 
+                    // amendment to the original
+                    if ( original.title!.startsWith('Registration') ) {
+                        search = /^Registration \((.+?)\)\s:\s(.*?)\((.*?)\)$/;
+                        if ( original.title!.includes(data.opposition) ) {
+                            replace = 'Registration ($1) : $2($3' + criteria + ')';
+                        } else {
+                            replace = 'Registration ($1, ' + data.opposition + ') : $2($3' + criteria + ')';
+                        }  
+                    } else {
+                        if ( original.title!.includes(data.opposition) ) {
+                            replace = 'Registration ($1) : $2$5($' + index + criteria + ')';
+                        } else {
+                            replace = 'Registration ($1, ' + data.opposition + ') : $2$5($' + index + criteria + ')';
+                        } 
+                    }                  
+                    return {
+                        search: search,
+                        replace: replace
+                    };
+                }
+
+                // ... and a method to merge sales
+                const tidySale = (original: ICS.EventAttributes, current: ICS.EventAttributes): SearchReplace => {
+                    const data: KeyEventData = extractOpposition(current.title!);
+                    let criteria: string = 'General';
+                    if ( data.criteria ) {
+                        criteria = data.criteria;
+                    }
+                    if ( original.title!.includes(criteria) ) {
+                        criteria = '';
+                    } else {
+                        criteria = ', ' + criteria;
+                    }
+                    
+                    if ( original.title!.startsWith('Bulk Sale') ) {
+                        return {
+                            search: /^Bulk Sale \((.+?)\)\s:\s(.*?)\((.+?)\)$/,
+                            replace: 'Bulk Sale ($1, ' + data.opposition + ') : $2($3' + criteria + ')'
+                        };
+                    } else {
+                        return {
+                            search:  /^(.+?)\s\(H\)\s:\s(.+?)(\((.*?)\))?$/,
+                            replace: 'Bulk Sale ($1, ' + data.opposition + ') : $2($4' + criteria + ')'
+                        };
+                    }
+                }
+
+                // If we have an event with the same date and time then we know we don't have a
+                // unique entry, but before we bail out we need to amend the original event to
+                // include the details of this one
+                if ( events[e].start.toString() == cleansed[u].start.toString() ) {
+                    log += '   - Sale occurs at same date/time\n';
+                    
+                    // Now, work out which regex to use for our first event, and tweak it to be a 
+                    // amalgamated event with the names of all the games included
+                    let sr: SearchReplace;
+                    if ( cleansed[u].title!.includes('Registration') ) {
+                        sr = tidyRegistration(cleansed[u], events[e]);
+                    } else {
+                        sr = tidySale(cleansed[u], events[e]);
+                    }
+                    cleansed[u].title = cleansed[u].title!.replace(sr.search, sr.replace);
+                    cleansed[u].title = cleansed[u].title!.replace(/\s{2,}/, ' ');
+                    log += '   - Cleansed entry re-titled to "' + cleansed[u].title + '"\n';                  
+                    unique = false;
+                    break;
+                }
+            }
+
+            // If we've gone through all the existing games without any matches, then we can
+            // happily add this event to the cleansed array
+            if ( unique ) {
+                log += '   - Sale "' + events[e].title + '" is unique\n';                  
+                cleansed.push(events[e]);
+            }
+        }
+
+        log += cleansed.length + ' entries now in array';
+        if ( process.env.DEBUG ) {
+            console.log(log);
+        }
+        return cleansed;
+
     }
 
 }

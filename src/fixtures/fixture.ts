@@ -118,7 +118,14 @@ export default class Fixture {
                 credits = parseInt(prereqs[2]);
             }
 
-            const description: string = match[1].replace(/SEASON TICKET HOLDERS/i, 'ST Holders').replace(/OFFICIAL MEMBERS/i, 'Members').replace(/REGISTRATION/i, 'Registration').replace(/AND/i, 'and') + ((!match[1].toLowerCase().endsWith('sale') && !match[1].toLowerCase().endsWith('registration')) ? ' Sale' : '') + (credits > 0 ? ' (' + credits + '+)' : '');
+            const description: string = match[1]
+                .replace(/SEASON TICKET HOLDERS/i, 'ST Holders')
+                .replace(/OFFICIAL MEMBERS/i, 'Members')
+                .replace(/REGISTRATION/i, 'Registration')
+                .replace(/AND/i, 'and')
+                .replace(/(\s+\d+)\s+?(\+\s+?)/, '$1$2') + 
+                ((!match[1].toLowerCase().endsWith('sale') && !match[1].toLowerCase().endsWith('registration')) ? ' Sale' : '') + 
+                (credits > 0 ? ' (' + credits + '+)' : '');
             const status: Status = (
                 (match[3].toLowerCase().indexOf('ended') > -1 || match[3].toLowerCase().indexOf('sold out') > -1) ? Status.ENDED : (
                 (match[3].toLowerCase().indexOf('available') > -1 || match[3].toLowerCase().indexOf('buy now') > -1) ? Status.AVAILABLE : 

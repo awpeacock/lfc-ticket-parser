@@ -17,7 +17,7 @@ class TicketParser {
         // occurs we don't want it to impact sending the email
         let client: Client, persistable: boolean = false, retry: Nullable<Backup> = null;
         const keys: Array<string> = new Array<string>();
-            try {
+        try {
             const db: Database = process.env.DB_CLIENT as Database;
             const table: string = process.env.DB_TABLE as string;
             const backup: string = process.env.DB_BACKUP as string;
@@ -28,17 +28,22 @@ class TicketParser {
             client = PersistenceFactory.getClient(db, table, backup);
             persistable = await client.init();
 
-            // Before we do anything else, let's just check if we have a backup waiting - if
-            // one exists then this has been fired as a retry attempt, and we just resend
-            // that, and quit
+            // Before we do anything else, let's just check if we have a backup waiting - we
+            // can then add these events to anything found today and send them all so nothing
+            // gets missed
             const backups: Array<Backup> = await client.restore();
             if ( backups.length > 0 ) {
                 retry = backups[backups.length - 1];
                 for ( let b = 0; b < backups.length - 1; b++ ) {
                     retry.merge(backups[b]);
                     keys.push(backups[b].getKey());
+                    console.log('+ Backup ' + backups[b].getKey() + ' found');
                 }
                 keys.push(retry.getKey());
+                console.log('+ Backup ' + retry.getKey() + ' found');
+                console.log('+ ' + keys.length + ' backups found');
+                // If a backup exists for today then this has been fired purely as a retry
+                // attempt, and we just resend that then quit
                 if ( retry.isToday() ) {
                     console.log('+ Retrying existing ICS file');
                     email.construct(retry.getEvents());
@@ -104,8 +109,8 @@ class TicketParser {
                     const success: boolean = await email.sendEvents();
                     if ( success ) {
                         if ( persistable ) {
-                            console.log('+ Removing backup from database');
-                            client!.reset(keys);
+                            console.log('+ Removing ' + keys.length + ' backup' + (keys.length > 1 ? 's' : '') + ' from database');
+                            await client!.reset(keys);
                         }
                     } else {
                         console.error('Unable to send email');
