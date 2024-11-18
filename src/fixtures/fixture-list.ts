@@ -93,10 +93,32 @@ export default class FixtureList {
 
     /**
      * Returns all fixtures belonging to the fixture list.
+     * @param {boolean} sort - (Optional) Sort the fixtures by first sale date.
      * @return {Array<Fixture>} An array of Fixture objects previously found.
      */
-    getFixtures(): Array<Fixture> {
-        return this.fixtures;
+    getFixtures(sort?: boolean): Array<Fixture> {
+        if ( !sort ) {
+            return this.fixtures;
+        }
+        // Make a copy of the fixtures variable (or the original will get sorted)
+        const ordered: Array<Fixture> = [];
+        this.fixtures.forEach((fixture) => {
+            ordered.push(fixture);
+        })
+        ordered.sort((fixture1: Fixture, fixture2: Fixture) => {
+            if ( fixture1.getActiveSaleCount() == 0 ) {
+                return 1;
+            }
+            if ( fixture2.getActiveSaleCount() == 0 ) {
+                return -1;
+            }
+            const start1: Array<number> = fixture1.getCalendarEvents().at(0)!.start as Array<number>;
+            const start2: Array<number> = fixture2.getCalendarEvents().at(0)!.start as Array<number>;
+            const sale1: number = (start1[0] * 100000000) + (start1[1] * 1000000) + (start1[2] * 10000) + (start1[3] * 100) + start1[4];
+            const sale2: number = (start2[0] * 100000000) + (start2[1] * 1000000) + (start2[2] * 10000) + (start2[3] * 100) + start2[4];
+            return (sale1 - sale2);
+        });
+        return ordered;
     }
 
     /**

@@ -182,7 +182,10 @@ const expired: Array<ICS.EventAttributes> = [
 
 export const Mocks = {
     
-    console: jest.spyOn(console, 'error'),
+    console: {
+        error: jest.spyOn(console, 'error'),
+        debug: jest.spyOn(console, 'debug')
+    },
     events: {
         bulk: bulk,
         ams : ams,
@@ -191,7 +194,8 @@ export const Mocks = {
     }
 
 };
-Mocks.console.mockImplementation(() => null);
+Mocks.console.error.mockImplementation(() => null);
+Mocks.console.debug.mockImplementation(() => null);
 
 export default function() {
 

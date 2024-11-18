@@ -106,7 +106,7 @@ class TicketParser {
                 if ( events.length > 0 ) {
                     console.log('+ Emailing ICS file');
                     email.construct(events);
-                    const success: boolean = await email.sendEvents();
+                    const success: boolean = await email.sendEvents(fixtures.getFixtures(true));
                     if ( success ) {
                         if ( persistable ) {
                             console.log('+ Removing ' + keys.length + ' backup' + (keys.length > 1 ? 's' : '') + ' from database');

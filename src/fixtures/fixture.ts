@@ -199,6 +199,22 @@ export default class Fixture {
     }
 
     /**
+     * Returns an array of all valid sales or registration for this fixture.
+     * @return {Array<Sale>} An array of all details for all valid events.
+     */
+    getSales(): Array<Sale> {
+
+        const valid: Array<Sale> = [];
+        this.sales.forEach((sale) => {
+            if ( sale.isValid() ) {
+                valid.push(sale);
+            }
+        });
+        return valid;
+
+    }
+
+    /**
      * Returns an array of ICS events representating any valid sales/registrations associated with the fixture.
      * @return {Array<EventAttributes>} An array of all attributes for all valid events.
      */

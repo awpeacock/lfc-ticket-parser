@@ -73,6 +73,42 @@ describe('Parsing the fixture list', () => {
 
     });
 
+    it('should return fixtures sorted by earliest sale date', () => {
+        const random: FixtureList = new FixtureList();
+        const order: Array<number> = [4, 1, 0, 1, 5, 3, 2, 2];
+        // Some heavy manipulation of the data is required to ensure we can test this accurately
+        for ( let f = 0; f < 8; f++ ) {
+            const fixture: Fixture = index.getFixtures().at(f)!;
+            const date: Date = new Date();
+            date.setDate(date.getDate() + order[f]);
+            const sale: Sale = fixture['sales'][0];
+            sale['date'] = date;
+            sale['status'] = Status.PENDING;
+            sale['description'] = 'Additional Members Sale';
+            fixture['sales'][0] = sale;
+            random['fixtures'][f] = fixture;
+        }
+        const ordered = random.getFixtures(true);
+        for ( let f = 0; f < 7; f++ ) {
+            expect(ordered[f]['sales'][0]['date']! <= ordered[f+1]['sales'][0]['date']!).toBeTruthy();
+        }
+        expect(ordered[0]).not.toEqual(random.getFixtures().at(0));
+        
+        for ( let s = 0; s < random['fixtures'][0]['sales'].length; s++ ) {
+            random['fixtures'][0]['sales'][s]['status'] = Status.ENDED;
+        }
+        for ( let s = 0; s < random['fixtures'][3]['sales'].length; s++ ) {
+            random['fixtures'][3]['sales'][s]['status'] = Status.ENDED;
+        }
+        const reordered = random.getFixtures(true);
+        for ( let f = 0; f < 5; f++ ) {
+            expect(reordered[f]['sales'][0]['date']! <= reordered[f+1]['sales'][0]['date']!).toBeTruthy();
+        }for ( let f = 6; f < 8; f++ ) {
+            expect(reordered[f]['sales'][0]['status']!).toBe(Status.ENDED);
+        }
+        expect(reordered[0]).not.toEqual(random.getFixtures().at(0));
+    });
+
 });
 
 describe('Parsing an active home fixture', () => {
@@ -353,6 +389,14 @@ describe('Sales dates', () => {
 
     it('should return null for a sale for hospitality seating', () => {
         expect(hospitality.getJson()).toBeNull();
+    });
+
+    it('should return a title for a valid sale', () => {
+        expect(pending.getTitle()).toEqual('1 Sept 2024, 9:00 : Additional Members Sale');
+    });
+
+    it('should return a null title for an invalid sale', () => {
+        expect(hospitality.getTitle()).toBeNull();
     });
 
 });

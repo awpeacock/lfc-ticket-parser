@@ -4,6 +4,8 @@ import { Attachment } from 'nodemailer/lib/mailer';
 import SMTPTransport, { MailOptions } from 'nodemailer/lib/smtp-transport';
 import * as ICS from 'ics'
 
+import { Fixture } from '../fixtures';
+
 dotenv.config();
 
 /**
@@ -68,10 +70,11 @@ export default class Email {
 
     /**
      * Sends the sales dates email. 
+     * @param {Array<Fixture>} fixtures - An array of all fixtures currently present on the Tickets Availability page.
      * @return {Promise<boolean>} Indicator of the success, or otherwise, of the attempt.
      * @throws Will throw an error if anything fails while attempting to send the email.
      */
-    async sendEvents(): Promise<boolean> {
+    async sendEvents(fixtures?: Array<Fixture>): Promise<boolean> {
 
         // Do not attempt to send an empty ICS file, will error when recipients try to do
         // anything with it (but return true - it hasn't failed so shouldn't flag as an
@@ -82,12 +85,35 @@ export default class Email {
 
         const date: string = new Date().getDate() + '/' + (new Date().getMonth()+1) + '/' + new Date().getFullYear();
         const subject: string = Email.SUBJECT_SALES + ' (' + date + ')';
-        const body: string = Email.BODY_SALES;
+        let text: string = Email.BODY_SALES, html: string = '<p>' + Email.BODY_SALES + '</p>';
         const attachment: Attachment = {
             filename: 'lfcinfo.ics',
             content: this.ics!.value
         };
-        return this.send(subject, body, attachment);
+
+        // Now add some plain text for all upcoming events (regardless if included in the ICS attachment)
+        if ( fixtures && fixtures.length > 0 ) {
+
+            const addContent = (str: string, tag: string, bold: boolean) => {
+                text += (tag != 'li' ? '\n\n' : '\n * ') + str;
+                html += '<' + tag + '>' + (bold ? '<strong>' : '') + str + (bold? '</strong>' : '') + '</' + tag + '>';
+            }
+            addContent('All upcoming sales:', 'p', false);
+            fixtures.forEach((fixture) => {
+                if ( fixture.getActiveSaleCount() > 0 ) {
+                    addContent(fixture.getMatch(),  'p', true);
+                    html += '<ul>';
+                    fixture.getSales().forEach((sale) => {
+                        if ( sale.isValid() ) {
+                            addContent(sale.getTitle() as string, 'li', false);
+                        }
+                    });
+                    html += '</ul>';
+                }
+            });
+
+        }
+        return this.send(process.env.EMAIL_TO, subject, text, attachment, html);
 
     }
 
@@ -101,19 +127,25 @@ export default class Email {
     // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     async sendError(message: string, e: any): Promise<boolean> {
 
-        return this.send(Email.SUBJECT_ERROR, message + '\r\nThe following went wrong:\r\n' + e);
+        let to: Undefinable<string> = process.env.EMAIL_ERROR;
+        if ( to == undefined ) {
+            to = process.env.EMAIL_TO;
+        }
+        return this.send(to, Email.SUBJECT_ERROR, message + '\r\nThe following went wrong:\r\n' + e);
 
     }
 
     /**
-     * The method that actually executes the sending of an email, regardless of type or content. 
+     * The method that actually executes the sending of an email, regardless of type or content.
+     * @param {Undefinale<string>} to - The email address(es) of the recipient. 
      * @param {string} subject - The email's subject line.
-     * @param {string} body - The main content of the email
+     * @param {string} body - The main content of the email.
      * @param {Attachment} attachment - (Optional) Any attachment to be sent with the email.
+     * @param {string} html - (Optional) HTML version of the main body content.
      * @return {Promise<boolean>} Indicator of the success, or otherwise, of the attempt.
      * @throws Will throw an error if anything fails while attempting to send the email.
      */
-    private async send(subject: string, body: string, attachment?: Attachment): Promise<boolean> {
+    private async send(to: Undefinable<string>, subject: string, body: string, attachment?: Attachment, html?: string): Promise<boolean> {
 
         try {
 
@@ -133,12 +165,15 @@ export default class Email {
             };
             const mailOptions: MailOptions = {
                 from: Email.FROM_NAME + '<' + process.env.EMAIL_FROM + '>',
-                to: process.env.EMAIL_TO,
+                to: to,
                 subject: subject,
                 text: body
             };
             if ( attachment ) {
                 mailOptions.attachments = [attachment];
+            }
+            if ( html ) {
+                mailOptions.html = html;
             }
 
             const transporter: nodemailer.Transporter = nodemailer.createTransport(smtpOptions);
@@ -340,7 +375,7 @@ export default class Email {
 
         log += cleansed.length + ' entries now in array';
         if ( process.env.DEBUG ) {
-            console.log(log);
+            console.debug(log);
         }
         return cleansed;
 

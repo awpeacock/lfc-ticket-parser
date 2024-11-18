@@ -116,16 +116,20 @@ describe('Converting the fixture list and sending the calendar email', () => {
     });
 
     it('should successfully send the email and return true', async () => {
+        process.env.DEBUG = 'true';
         const date: string = new Date().getDate() + '/' + (new Date().getMonth()+1) + '/' + new Date().getFullYear();
         const email: Email = new Email();
         email.construct(index.getChanges());
-        await expect(email.sendEvents()).resolves.toBe(true);
+        await expect(email.sendEvents(index.getFixtures(true))).resolves.toBe(true);
         const mails = mock.getSentMail();
         expect(mails).not.toBeNull();
         expect(mails.length).toBe(1);
         expect(mails[0].from!.toString().startsWith(Email.FROM_NAME)).toBe(true);
         expect(mails[0].subject).toEqual(Email.SUBJECT_SALES + ' (' + date + ')');
         expect(mails[0].text).toContain(Email.BODY_SALES);
+        expect(mails[0].html).toContain('<p>' + Email.BODY_SALES + '</p>');
+        expect(mails[0].text).toContain('Manchester City (H) - Premier League (2024-25)\n * 14 Nov 2024, 10:00 : Additional Members 4+ Sale Registration');
+        expect(mails[0].html).toContain('<p><strong>Aston Villa (H) - Premier League (2024-25)</strong></p><ul><li>4 Sept 2024, 8:15 : Members Sale (13+)</li>');
         expect(mails[0].attachments).not.toBeUndefined();
         expect(mails[0].attachments).not.toBeNull();
         expect(mails[0].attachments!.length).toBe(1);
@@ -142,6 +146,7 @@ describe('Converting the fixture list and sending the calendar email', () => {
     });
 
     it('should successfully send an error email and return true', async () => {
+        delete process.env.EMAIL_ERROR;
         const email: Email = new Email();
         await expect(email.sendError('An error message', new Error('Error detail'))).resolves.toBe(true);
         const mails = mock.getSentMail();

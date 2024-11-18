@@ -37,6 +37,24 @@ export default class Sale {
     }
 
     /**
+     * Returns a readable representation of the sale/registration.
+     * @return {Nullable<string>} The title if it is valid, otherwise null.
+     */
+    getTitle(): Nullable<string> {
+
+        if ( !this.isValid() ) {
+            return null;
+        }
+        const options: Intl.DateTimeFormatOptions = {
+            day: "numeric", month: "short", year: "numeric",
+            hour: "numeric", minute: "2-digit", 
+        };
+        const date = this.date!.toLocaleDateString("en-GB", options).replace(' at ', ' ');
+        return  date + ' : ' + this.description;
+
+    }
+
+    /**
      * Returns a Json representation of the sale/registration.
      * @return {Nullable<string>} The Json string if it is valid, otherwise null.
      */
