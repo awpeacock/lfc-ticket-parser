@@ -1,6 +1,7 @@
 import {jest} from '@jest/globals';
 import * as fs from 'fs';
 import * as ICS from 'ics';
+import { Fixture, Sale } from './fixtures';
 
 const today: Date = new Date();
 const month: number = today.getMonth() == 11 ? 1 : today.getMonth() + 2;
@@ -96,7 +97,7 @@ const bulk: {[key: string]: Array<ICS.EventAttributes>} = {
         },
         {
             productId: 'lfctickets/ics',
-            title: 'Arsenal (H) : Members Sale (3+)',
+            title: 'Manchester City (H) : Members Sale (3+)',
             start: [year, month, 9, 8, 15],
             duration: { minutes: 60 },
             busyStatus: 'BUSY'
@@ -180,6 +181,17 @@ const expired: Array<ICS.EventAttributes> = [
     }
 ];
 
+const fixtures: Array<Fixture> = [
+    new Fixture('/tickets/tickets-availability/liverpool-fc-v-chelsea-19-oct-2024-0530pm-347', 'Chelsea', 'H', 'Premier League', new Date((year + 1) + '-10-19 17:30')),
+    new Fixture('/tickets/tickets-availability/liverpool-fc-v-brighton-hove-albion-2-nov-2024-0300pm-345', 'Brighton and Hove Albion', 'H', 'Premier League', new Date((year + 1) + '-10-19 17:30')),
+    new Fixture('/tickets/tickets-availability/liverpool-fc-v-aston-villa-9-nov-2024-0300pm-346', 'Aston Villa', 'H', 'Premier League', new Date((year + 1) + '-10-19 17:30')),
+    new Fixture('/tickets/tickets-availability/liverpool-fc-v-manchester-city-1-dec-2024-0400pm-348', 'Manchester City', 'H', 'Premier League', new Date((year + 1) + '-10-19 17:30'))
+];
+Reflect.set(fixtures[0], 'sales', [new Sale('Members Sale (13+)', Status.PENDING, new Date(year, month-1, 8, 8, 15)), new Sale('Members Sale (4+)', Status.PENDING, new Date(year, month-1, 8, 8, 15))]);
+Reflect.set(fixtures[1], 'sales', [new Sale('Members Sale (13+)', Status.PENDING, new Date(year, month-1, 8, 8, 15)), new Sale('Members Sale', Status.PENDING, new Date(year, month-1, 8, 8, 15))]);
+Reflect.set(fixtures[2], 'sales', [new Sale('Members Sale (13+)', Status.PENDING, new Date(year, month-1, 8, 8, 15)), new Sale('Members Sale', Status.PENDING, new Date(year, month-1, 8, 8, 15))]);
+Reflect.set(fixtures[3], 'sales', [new Sale('Members Sale (3+)', Status.PENDING, new Date(year, month-1, 8, 8, 15))]);
+
 export const Mocks = {
     
     console: {
@@ -191,7 +203,8 @@ export const Mocks = {
         ams : ams,
         away: away,
         expired: expired
-    }
+    },
+    fixtures: fixtures
 
 };
 Mocks.console.error.mockImplementation(() => null);
@@ -209,6 +222,7 @@ export default function() {
         credits: fs.readFileSync('./src/__mocks__/availability-home-credits.html', 'utf-8'),
         subject: fs.readFileSync('./src/__mocks__/availability-away-subject.html', 'utf-8'),
         euro: fs.readFileSync('./src/__mocks__/availability-away-euro.html', 'utf-8'),
+        image: fs.readFileSync('./src/__mocks__/availability-away-image.html', 'utf-8'),
         inactive: fs.readFileSync('./src/__mocks__/availability-home-inactive.html', 'utf-8'),
         sold: fs.readFileSync('./src/__mocks__/availability-away-inactive.html', 'utf-8')
     };
@@ -233,6 +247,8 @@ export default function() {
             html = files.subject;
         } else if ( url.includes('ac-milan') ) {
             html = files.euro;
+        } else if ( url.includes('west-ham') ) {
+            html = files.image
         } else if ( url.includes('nottingham-forest') ) {
             html = files.inactive;
         } else if ( url.includes('manchester-united') ) {

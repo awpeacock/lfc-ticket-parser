@@ -8,6 +8,8 @@ setup();
 
 describe('Parsing the fixture list', () => {
 
+    const TOTAL: number = 9;
+
     // Share the index class with all methods.  To save on processing/performance, we only want to
     // retrieve this the once.
     const index = new FixtureList();
@@ -16,7 +18,7 @@ describe('Parsing the fixture list', () => {
     it('should correctly read from the index page', () => {
         let size: number = 0;
         expect(() => { size = index.find() }).not.toThrow();
-        expect(size).toEqual(8);
+        expect(size).toEqual(TOTAL);
     });
 
     it('should successfully parse all fixtures previously found', async () => {
@@ -31,7 +33,16 @@ describe('Parsing the fixture list', () => {
                 valid++;
             }
         });
-        expect(valid).toEqual(6);
+        expect(valid).toEqual(TOTAL-3);
+    });
+
+    it('should successfully recognise the competition for both text and images', () => {
+        index.getFixtures().forEach((fixture) => {
+            expect(fixture.getMatch().includes('Unknown')).toBeFalsy();
+            if ( fixture.getMatch().includes('Manchester City') || fixture.getMatch().includes('West Ham') ) {
+                expect(fixture.getMatch().includes('Premier League')).toBeTruthy();
+            }
+        })
     });
 
     it('should throw errors if it cannot parse the index page', async () => {
@@ -251,7 +262,11 @@ describe('Parsing an active away fixture with potential sales', () => {
     });
 
     it('should successfully generate a JSON string with sales dates', () => {
-        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-manchester-united-a-premier-league","match":"Manchester United (A) - Premier League (2024-25)","sales":[{"description":"ST Holders and Members Sale (7+)","date":"Wed Aug 28 2024 11:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (6+)","date":"Wed Aug 28 2024 13:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (5+)","date":"Wed Aug 28 2024 15:00:00 GMT+0100 (British Summer Time)"}]}}');
+        // This HTML did not include the year, so this gives us a good double test, that it works out the correct date
+        const date = new Date(new Date().getFullYear(), 7, 28);
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const expected = days[date.getDay()] + ' Aug 28 ' + date.getFullYear();
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-manchester-united-a-premier-league","match":"Manchester United (A) - Premier League (2024-25)","sales":[{"description":"ST Holders and Members Sale (7+)","date":"Wed Aug 28 2024 11:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (6+)","date":"' + expected + ' 13:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (5+)","date":"' + expected + ' 15:00:00 GMT+0100 (British Summer Time)"}]}}');
     });
 
 });

@@ -65,7 +65,7 @@ export default class FixtureList {
             const away: string = info[2];
             const opposition: string = (home == 'Liverpool FC' ? away : home);
             // We're only interested in the men's team here (although we could extend it in the future)
-            if ( opposition.toLowerCase().includes('women') ) {
+            if ( opposition.toLowerCase().includes('women') || opposition.toLowerCase().includes('ladies') ) {
                 continue;
             }
 
@@ -79,8 +79,12 @@ export default class FixtureList {
             // The remaining details (home/away and competition) helpfully have their own class identifiers
             const l: Nullable<RegExpMatchArray> = section.match(/<span class="match-location">([HA])<\/span>/);
             const venue: Venue = (l != null ? l[1] as 'H'|'A' : 'U');
+            // Some games now have the competition logo rather than the text so handle both scenarios 
             const c: Nullable<RegExpMatchArray> = section.match(/<span class="comp-text">(.+?)<\/span>/);
-            const competition: string = (c != null ? c[1] : 'Unknown');
+            const crest: Nullable<RegExpMatchArray> = section.match(/<img.*?alt="(.+?)".*?class="league-crest"/);
+            const logo: Nullable<string> = (crest != null ? crest[1] :  null);
+            const text: string = (c != null ? c[1] : 'Unknown');
+            const competition: string = (logo == null) ? text : logo;
 
             // Now create the Fixture object and add it to the array for looping through later and individually parsing
             const fixture: Fixture = new Fixture(url, opposition, venue, competition, ko);

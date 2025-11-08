@@ -178,6 +178,20 @@ export default class Fixture {
     }
 
     /**
+     * Returns a count of upcoming sales.
+     * @return {number} The total number of sales/registrations that are in the future.
+     */
+    getUpcomingSaleCount(): number {
+        let count: number = 0;
+        this.sales.forEach((sale) => {
+            if ( sale.isUpcoming() ) {
+                count++;
+            }
+        });
+        return count;
+    }
+
+    /**
      * Returns a Json representation of the fixture and all sales.
      * @return {Nullable<string>} The Json for this fixture if it has any valid sales, otherwise null.
      */

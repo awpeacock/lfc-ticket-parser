@@ -100,7 +100,7 @@ export default class Email {
             }
             addContent('All upcoming sales:', 'p', false);
             fixtures.forEach((fixture) => {
-                if ( fixture.getActiveSaleCount() > 0 ) {
+                if ( fixture.getActiveSaleCount() > 0 && fixture.getUpcomingSaleCount() > 0 ) {
                     addContent(fixture.getMatch(),  'p', true);
                     html += '<ul>';
                     fixture.getSales().forEach((sale) => {
@@ -253,7 +253,7 @@ export default class Email {
                 // First bit of consistent code is that to get the opposition and criteria for the current event
                 const extractOpposition = (title: string): KeyEventData => {
                     // Setup a regular expression to catch the new title as it currently is
-                    const search: RegExp = /^(.+?)\s\(H\)\s:\s(.+?)(\((.*?)\))?$/;
+                    const search: RegExp = /^(.+?)\s\([H|A]\)\s:\s(.+?)(\((.*?)\))?$/;
                     // Then, use it to get the name of the opposition for the event being tested
                     const match: Nullable<RegExpMatchArray> = title!.match(search);
                     const opposition: string = match![1], criteria: string = match![4];

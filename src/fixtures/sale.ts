@@ -37,6 +37,17 @@ export default class Sale {
     }
 
     /**
+     * Returns a boolean indicating whether the sale/registration is in the future.
+     * @return {boolean} A boolean representing whether the date is set in the future.
+     */
+    isUpcoming(): boolean {
+
+        const today: Date = new Date();
+        return this.date != null && today < this.date;
+    
+    }
+
+    /**
      * Returns a readable representation of the sale/registration.
      * @return {Nullable<string>} The title if it is valid, otherwise null.
      */
