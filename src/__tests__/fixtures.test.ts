@@ -8,7 +8,7 @@ setup();
 
 describe('Parsing the fixture list', () => {
 
-    const TOTAL: number = 9;
+    const TOTAL: number = 10;
 
     // Share the index class with all methods.  To save on processing/performance, we only want to
     // retrieve this the once.
@@ -296,6 +296,67 @@ describe('Parsing an active away European fixture', () => {
 
     it('should successfully generate a JSON string with sales dates', () => {
         expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-ac-milan-a-champions-league","match":"AC Milan (A) - Champions League (2024-25)","sales":[{"description":"ST Holders and Members Sale (1+)","date":"Fri Sep 06 2024 11:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Registration","date":"Fri Sep 06 2024 08:15:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale","date":"Wed Sep 11 2024 08:15:00 GMT+0100 (British Summer Time)"}]}}');
+    });
+
+});
+
+describe('Parsing an active fixture with a TBC fixture date', () => {
+
+    const fixture: Fixture = new Fixture('/tickets/tickets-availability/nottingham-forest-v-liverpool-fc-tbc-532', 'Nottingham Forest', 'A', 'Premier League', new Date('0000-01-01T00:00:00.000Z'));
+    fixture.download();
+
+    const date = new Date();
+    const year = date.getMonth() > 4 ? date.getFullYear() : date.getFullYear() - 1;
+
+    it('should successfully generate a unique ID', () => {
+        expect(fixture.id).toEqual(year + '-nottingham-forest-a-premier-league');
+    });
+
+    it('should successfully assign the correct season to the fixture', () => {
+        expect(Reflect.get(fixture, 'season')).toBe(year);
+    });
+
+    it('should successfully generate a match string', () => {
+        expect(fixture.getMatch()).toEqual('Nottingham Forest (A) - Premier League (' + year + '-' + (year - 1999) + ')');
+    });
+
+    it('should successfully parse', () => {
+        let size: number = 0;
+        expect(() => { size = fixture.find() }).not.toThrow();
+        expect(size).toEqual(4);
+    });
+
+    it('should successfully recognise the number of valid sales', () => {
+        expect(fixture.getActiveSaleCount()).toEqual(4);
+    });
+
+    it('should successfully generate a JSON string with sales dates', () => {
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"' + year + '-nottingham-forest-a-premier-league","match":"Nottingham Forest (A) - Premier League (' + year + '-' + (year-1999) +')","sales":[{"description":"ST Holders and ALL RED MEMBERS Sale (12+)","date":"Tue Jan 27 2026 08:15:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and ALL RED MEMBERS Sale (11+)","date":"Wed Jan 28 2026 11:00:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and ALL RED MEMBERS Sale (10+)","date":"Wed Jan 28 2026 13:00:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and ALL RED MEMBERS Sale (9+)","date":"Wed Jan 28 2026 15:00:00 GMT+0000 (Greenwich Mean Time)"}]}}');
+    });
+
+    it('should throw errors if it cannot parse the fixture page', async () => {
+
+        const fetch = jest.spyOn(global, 'fetch');
+        fetch.mockImplementationOnce(() => Promise.reject('Failure retrieving HTML')); 
+
+        const faulty: Fixture = new Fixture('/tickets/tickets-availability/nottingham-forest-v-liverpool-fc-tbc-532', 'Nottingham Forest', 'A', 'Premier League', new Date('0000-01-01T00:00:00.000Z'));
+        await faulty.download();
+        expect(() => faulty.find()).toThrow();
+
+    });
+
+    it('should throw errors if the HTML of the fixture page does not match the expected fixture', async () => {
+
+        const faulty: Fixture = new Fixture('/tickets/tickets-availability/nottingham-forest-v-liverpool-fc-tbc-532', 'Nottingham Forest', 'A', 'Premier League', new Date('0000-01-01T00:00:00.000Z'));
+        const download = jest.spyOn(faulty, 'download');
+        download.mockImplementationOnce(async function(this: Fixture) { 
+            this['html'] = fs.readFileSync('./src/__mocks__/availability-home-multiple.html', 'utf-8');
+            return true;
+        });
+
+        await faulty.download();
+        expect(() => faulty.find()).toThrow();
+
     });
 
 });

@@ -224,7 +224,8 @@ export default function() {
         euro: fs.readFileSync('./src/__mocks__/availability-away-euro.html', 'utf-8'),
         image: fs.readFileSync('./src/__mocks__/availability-away-image.html', 'utf-8'),
         inactive: fs.readFileSync('./src/__mocks__/availability-home-inactive.html', 'utf-8'),
-        sold: fs.readFileSync('./src/__mocks__/availability-away-inactive.html', 'utf-8')
+        sold: fs.readFileSync('./src/__mocks__/availability-away-inactive.html', 'utf-8'),
+        tbc: fs.readFileSync('./src/__mocks__/availability-away-tbc.html', 'utf-8'),
     };
     global.fetch = jest.fn((input: RequestInfo | URL) => {
         const url: string = (input as URL).toString();
@@ -249,10 +250,12 @@ export default function() {
             html = files.euro;
         } else if ( url.includes('west-ham') ) {
             html = files.image
-        } else if ( url.includes('nottingham-forest') ) {
+        } else if ( url.includes('-v-nottingham-forest') ) {
             html = files.inactive;
         } else if ( url.includes('manchester-united') ) {
             html = files.sold;
+        } else if ( url.includes('nottingham-forest-v-') ) {
+            html = files.tbc;
         }
         return Promise.resolve({
             text: () => Promise.resolve(html)

@@ -23,7 +23,7 @@ export default class FixtureList {
     */
     async download(): Promise<boolean> {
 
-        dotenv.config();
+        dotenv.config({ debug: false, quiet: true });
         if ( !process.env.DOMAIN || !process.env.INDEX_URL ) {
             return false;
         }
@@ -57,7 +57,7 @@ export default class FixtureList {
             const url: string = match[1], section: string = match[2];
 
             // The "info" block contains all the information about opposition and kick-off
-            const info: Nullable<RegExpMatchArray> = section.match(/<div class="info">.*<p>(.+?) v (.+?)<\/p>.*<span>(.+?),.?(\d{1,2}):(\d{2})([ap]m)<\/span>/s);
+            const info: Nullable<RegExpMatchArray> = section.match(/<div class="info">.*<p>(.+?) v (.+?)<\/p>.*<span>(?:(.+?),\s*(\d{1,2}):(\d{2})([ap]m)|TBC)<\/span>/s);
             if ( info == null || info.length != 7 ) {
                 throw new Error('Invalid HTML format');
             }
@@ -71,10 +71,12 @@ export default class FixtureList {
 
             // Unfortunately, the kick-off date/time is formatted in such a way that Javascript will throw "Invalid Date" 
             // if you try and convert directly, so a bit of interpretation is required (it's the 3:00pm that it doesn't like)
-            const ko: Date = new Date(info[3]);
-            const hours: number = parseInt(info[4]) + (info[6] == 'pm' ? 12: 0), minutes: number = parseInt(info[5]);
-            ko.setHours(hours);
-            ko.setMinutes(minutes);
+            const ko: Date = info[3] === undefined ? new Date('0000-01-01T00:00:00.000Z') : new Date(info[3]);
+            if (info[3] !== undefined) {
+                const hours: number = parseInt(info[4]) + (info[6] == 'pm' ? 12: 0), minutes: number = parseInt(info[5]);
+                ko.setHours(hours);
+                ko.setMinutes(minutes);
+            }
 
             // The remaining details (home/away and competition) helpfully have their own class identifiers
             const l: Nullable<RegExpMatchArray> = section.match(/<span class="match-location">([HA])<\/span>/);

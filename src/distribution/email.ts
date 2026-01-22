@@ -6,7 +6,7 @@ import * as ICS from 'ics'
 
 import { Fixture } from '../fixtures';
 
-dotenv.config();
+dotenv.config({ debug: false, quiet: true });
 
 /**
  * Class representing the information that will make up the email sent out

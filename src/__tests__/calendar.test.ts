@@ -127,7 +127,7 @@ describe('Converting the fixture list and sending the calendar email', () => {
         await expect(email.sendEvents(Mocks.fixtures)).resolves.toBe(true);
         const mails = mock.getSentMail();
         expect(mails).not.toBeNull();
-        expect(mails.length).toBe(1);console.warn(mails[0].html);
+        expect(mails.length).toBe(1);
         expect(mails[0].from!.toString().startsWith(Email.FROM_NAME)).toBe(true);
         expect(mails[0].subject).toEqual(Email.SUBJECT_SALES + ' (' + date + ')');
         expect(mails[0].text).toContain(Email.BODY_SALES);

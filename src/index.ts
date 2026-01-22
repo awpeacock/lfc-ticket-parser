@@ -9,7 +9,7 @@ class TicketParser {
 
     static async parse(): Promise<void> {
 
-        dotenv.config();
+        dotenv.config({ debug: false, quiet: true });
         const email:Email = new Email();
         const fixtures: FixtureList = new FixtureList();
 

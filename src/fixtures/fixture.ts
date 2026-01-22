@@ -44,8 +44,14 @@ export default class Fixture {
      */
     constructor(url: string, opposition: string, venue: Venue, competition: string, ko: Date) {
 
+        // If we've not been passed in a KO date (ie TBC), then set to today's date so any calculations are based
+        // on the assumption it is for this season
+        if (ko.getFullYear() === -1) {
+            ko = new Date();
+        }
         // Calculate the first year of the current season (e.g. 2024-25 is 2024) for the unique identifier
         this.season = ko.getFullYear() - (ko.getMonth() < 5 ? 1 : 0);
+
         // Now onstruct the ID for the fixture from the combo of season, opposition, home/away and competition - 
         // these should always be a unique combination (and also prevent a "new" fixture being created every time 
         // the date/time of kick off changes)
@@ -66,7 +72,7 @@ export default class Fixture {
     */
     async download(): Promise<boolean> {
 
-        dotenv.config();
+        dotenv.config({ debug: false, quiet: true });
         if ( !process.env.DOMAIN ) {
             return false;
         }
