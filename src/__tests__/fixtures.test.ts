@@ -8,7 +8,7 @@ setup();
 
 describe('Parsing the fixture list', () => {
 
-    const TOTAL: number = 10;
+    const TOTAL: number = 11;
 
     // Share the index class with all methods.  To save on processing/performance, we only want to
     // retrieve this the once.
@@ -209,6 +209,35 @@ describe('Parsing an active home fixture with multiple sales', () => {
 
 });
 
+describe('Parsing an active home fixture with specfic game criteria', () => {
+
+    const fixture: Fixture = new Fixture('/tickets-availability/liverpool-fc-v-brighton-hove-albion-14-feb-2026-0800pm-531', 'Brighton &amp; Hove Albion', 'H', 'FA Cup', new Date('2026-02-14 20:00'));
+    fixture.download();
+
+    it('should successfully generate a unique ID', () => {
+        expect(fixture.id).toEqual('2025-brighton-hove-albion-h-fa-cup');
+    });
+
+    it('should successfully generate a match string', () => {
+        expect(fixture.getMatch()).toEqual('Brighton &amp; Hove Albion (H) - FA Cup (2025-26)');
+    });
+
+    it('should successfully parse', () => {
+        let size: number = 0;
+        expect(() => { size = fixture.find() }).not.toThrow();
+        expect(size).toEqual(7);
+    });
+
+    it('should successfully recognise the number of valid sales', () => {
+        expect(fixture.getActiveSaleCount()).toEqual(4);
+    });
+
+    it('should successfully generate a JSON string with sales dates', () => {
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2025-brighton-hove-albion-h-fa-cup","match":"Brighton &amp; Hove Albion (H) - FA Cup (2025-26)","sales":[{"description":"ST Holders and Members Registration","date":"Thu Jan 22 2026 11:00:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and Members Sale (2+)","date":"Fri Jan 23 2026 11:00:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and Members Sale (1+)","date":"Fri Jan 23 2026 14:00:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and Members Sale","date":"Tue Jan 27 2026 13:00:00 GMT+0000 (Greenwich Mean Time)"}]}}');
+    });
+
+});
+
 describe('Parsing an active away fixture with multiple sales', () => {
 
     const fixture: Fixture = new Fixture('/tickets/tickets-availability/wolverhampton-wanderers-v-liverpool-fc-28-sep-2024-0530pm-372', 'Wolverhampton Wanderers', 'A', 'Premier League', new Date('2024-09-28 17:30'));
@@ -331,7 +360,7 @@ describe('Parsing an active fixture with a TBC fixture date', () => {
     });
 
     it('should successfully generate a JSON string with sales dates', () => {
-        expect(fixture.getJson()).toEqual('{"fixture":{"id":"' + year + '-nottingham-forest-a-premier-league","match":"Nottingham Forest (A) - Premier League (' + year + '-' + (year-1999) +')","sales":[{"description":"ST Holders and ALL RED MEMBERS Sale (12+)","date":"Tue Jan 27 2026 08:15:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and ALL RED MEMBERS Sale (11+)","date":"Wed Jan 28 2026 11:00:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and ALL RED MEMBERS Sale (10+)","date":"Wed Jan 28 2026 13:00:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and ALL RED MEMBERS Sale (9+)","date":"Wed Jan 28 2026 15:00:00 GMT+0000 (Greenwich Mean Time)"}]}}');
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"' + year + '-nottingham-forest-a-premier-league","match":"Nottingham Forest (A) - Premier League (' + year + '-' + (year-1999) +')","sales":[{"description":"ST Holders and Members Sale (12+)","date":"Tue Jan 27 2026 08:15:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and Members Sale (11+)","date":"Wed Jan 28 2026 11:00:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and Members Sale (10+)","date":"Wed Jan 28 2026 13:00:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and Members Sale (9+)","date":"Wed Jan 28 2026 15:00:00 GMT+0000 (Greenwich Mean Time)"}]}}');
     });
 
     it('should throw errors if it cannot parse the fixture page', async () => {

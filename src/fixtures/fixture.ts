@@ -112,13 +112,17 @@ export default class Fixture {
             // Make sure to capture this and include in the description to make the information useful.
             // Of course, just to be awkward, some times they use numbers, some times they use the words!
             let credits: number = 0;
-            const prereqs: Nullable<RegExpMatchArray> = match[2].match(/recorded (all )*(.+?)((\+)|( or more)|( of))/);
+            const prereqs: Nullable<RegExpMatchArray> = match[2].match(/who .*?recorded (all )*(.+?)((\+)|( or more)|( of)|( (.*?)games)|(.+? \(\d{1,}\.\d{1,}\.\d{1,}\),*){1,})/i);
             if ( prereqs != null ) {
-                if ( !prereqs[2].match(/^d+$/) ) {
+                if ( !prereqs[2].match(/^\d+$/) ) {
                     // Max credits we can ever need must surely be 19 (every home or away game in a league season)
                     const words: Array<string> = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
                     for ( let w = 0; w < 19; w++ ) {
                         prereqs[2] = prereqs[2].replace(words[w], String(w+1));
+                    }
+                    // It may just be a list of games, in which case we need to do a manual count
+                    if ( !prereqs[2].match(/^d+$/) ) {
+                        prereqs[2] = ((prereqs[3].match(/,/g)||[]).length + 1).toString();
                     }
                 }
                 credits = parseInt(prereqs[2]);
@@ -127,8 +131,11 @@ export default class Fixture {
             const description: string = match[1]
                 .replace(/SEASON TICKET HOLDERS/i, 'ST Holders')
                 .replace(/OFFICIAL MEMBERS/i, 'Members')
+                .replace(/ALL RED MEMBERS \(FULL, LIGHT OR JUNIOR\)/i, 'Members')
+                .replace(/ALL RED MEMBERS/i, 'Members')
                 .replace(/REGISTRATION/i, 'Registration')
                 .replace(/AND/i, 'and')
+                .replace(/&amp;/, 'and')
                 .replace(/(\s+\d+)\s+?(\+\s+?)/, '$1$2') + 
                 ((!match[1].toLowerCase().endsWith('sale') && !match[1].toLowerCase().endsWith('registration')) ? ' Sale' : '') + 
                 (credits > 0 ? ' (' + credits + '+)' : '');
@@ -137,6 +144,10 @@ export default class Fixture {
                 (match[3].toLowerCase().indexOf('available') > -1 || match[3].toLowerCase().indexOf('buy now') > -1) ? Status.AVAILABLE : 
                 Status.PENDING
             ));
+            // We're not interested in Priority Rights holders
+            if ( description.toLowerCase().includes('priority right') ) {
+                continue;
+            }
 
             // As with the fixture date, the sale date/time is formatted in such a way that Javascript will throw "Invalid Date" 
             // if you try and convert directly, so a bit of interpretation is required

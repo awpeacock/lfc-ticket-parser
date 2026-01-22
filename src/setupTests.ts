@@ -220,6 +220,7 @@ export default function() {
         bulk1: fs.readFileSync('./src/__mocks__/availability-home-bulk-1.html', 'utf-8'),
         bulk2: fs.readFileSync('./src/__mocks__/availability-home-bulk-2.html', 'utf-8'),
         credits: fs.readFileSync('./src/__mocks__/availability-home-credits.html', 'utf-8'),
+        cup: fs.readFileSync('./src/__mocks__/availability-home-cup.html', 'utf-8'),
         subject: fs.readFileSync('./src/__mocks__/availability-away-subject.html', 'utf-8'),
         euro: fs.readFileSync('./src/__mocks__/availability-away-euro.html', 'utf-8'),
         image: fs.readFileSync('./src/__mocks__/availability-away-image.html', 'utf-8'),
@@ -236,12 +237,14 @@ export default function() {
             html = files.home;
         } else if ( url.includes('chelsea') ) {
             html = files.multiple;
-        } else if ( url.includes('brighton') ) {
+        } else if ( url.includes('brighton') && url.includes('2024') ) {
             html = files.bulk1;
         } else if ( url.includes('aston-villa') ) {
             html = files.bulk2;
         } else if ( url.includes('manchester-city') ) {
             html = files.credits;
+        } else if ( url.includes('brighton') && url.includes('2026') ) {
+            html = files.cup;
         } else if ( url.includes('wolverhampton-wanderers') ) {
             html = files.away;
         } else if ( url.includes('manchester-utd') ) {
