@@ -2,17 +2,19 @@ import * as fs from 'fs';
 import * as cp from 'child_process';
 import archiver from 'archiver';
 
+import { Narrator } from '@redpenguinstudio/herbert';
+
 class Builder {
 
     path = 'lfct-aws-js';
 
     copyFolder() {
-        console.log('+ Copying "dist" folder');
+        Narrator.heading('Copying "dist" folder');
         try {
             fs.cpSync('./dist', '../' + this.path, {recursive: true});
             return true;
         } catch (e) {
-            console.log('  !!! Unable to copy folder !!!');
+            Narrator.error('Unable to copy folder', e);
             return false;
         }
     }
@@ -24,20 +26,20 @@ class Builder {
                     if ( error ) {
                         reject(error);
                     } else {
-                        resolve('  - "' + module + '" Successfully installed');
+                        resolve('"' + module + '" Successfully installed');
                     }
                 });
             });
-            console.log(result);
+            Narrator.info(result);
             return true;
         } catch (e) {
-            console.log('  !!! "' + module + '" install failed !!!');
+            Narrator.error('"' + module + '" install failed', e);
             return false;
         }
     }
 
     async createZip() {
-        console.log('+ Zipping up folder');
+        Narrator.heading('Zipping up folder');
         try {
             const target = 'outputs';
             if ( !fs.existsSync(target) ){
@@ -45,39 +47,38 @@ class Builder {
             }
             const output = fs.createWriteStream('./' + target + '/' + this.path + '.zip');
             output.on('error', function(e){
-                return console.log('   !!! Creating the zip file failed !!!');
+                return Narrator.error('Creating the zip file failed', e);
             });
             const zip = archiver('zip');
             zip.on('error', function(e){
-                return console.log('   !!! Building the zip file failed !!!');
+                return Narrator.error('Building the zip file failed', e);
             });
             zip.pipe(output);
             zip.directory('../' + this.path, false);
             await zip.finalize();
         } catch (e) {
-            console.log('   !!! Zipping the folder failed !!!');
+            Narrator.error('Zipping the folder failed');
         }
     }
 
     teardown() {
-        console.log('+ Tidying up');
+        Narrator.log('Tidying up');
         try {
             fs.rmSync('../lfct-aws-js', {recursive: true, force: true});
         } catch (e) {
-            console.log('   !!! Unable to remove folder !!!');
+            Narrator.error('Unable to remove folder', e);
         }
     }
 
 }
 
 const builder = new Builder();
-console.log('------------------------------------------------------------');
+Narrator.title('Building AWS deployment');
 if ( builder.copyFolder() ) {
-    console.log('+ Installing node module dependencies');
-    if ( await builder.installDependency('dotenv') && await builder.installDependency('ics') && await builder.installDependency('nodemailer') ) {
+    Narrator.heading('Installing node module dependencies');
+    if ( await builder.installDependency('dotenv') && await builder.installDependency('ics') && await builder.installDependency('nodemailer') && await builder.installDependency('@redpenguinstudio/herbert') ) {
         await builder.createZip();
     }
     builder.teardown();
 }
-console.log('+ Build and bundle of AWS Lambda zip complete');
-console.log('----------------------------------------');
+Narrator.success('Build and bundle of AWS Lambda zip complete');

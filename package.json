@@ -28,7 +28,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.972.0",
     "@aws-sdk/lib-dynamodb": "^3.972.0",
-    "@redpenguinstudio/herbert": "^1.0.0",
+    "@redpenguinstudio/herbert": "^1.0.1",
     "@types/nodemailer": "^7.0.5",
     "archiver": "^7.0.1",
     "aws-sdk-client-mock": "^4.1.0",

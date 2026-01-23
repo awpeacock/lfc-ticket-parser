@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
-import * as ICS from 'ics'
+import * as ICS from 'ics';
+
+import { Narrator } from '@redpenguinstudio/herbert';
 
 import { FixtureList } from "./fixtures";
 import { PersistenceFactory, Client, Backup } from './persistence';
@@ -24,7 +26,7 @@ class TicketParser {
             if ( db == null || table == null || backup == null ) {
                 throw new Error('No database variables set');
             }
-            console.log('+ Initialising "' + db + '" database');
+            Narrator.heading('Initialising "' + db + '" database');
             client = PersistenceFactory.getClient(db, table, backup);
             persistable = await client.init();
 
@@ -37,53 +39,50 @@ class TicketParser {
                 for ( let b = 0; b < backups.length - 1; b++ ) {
                     retry.merge(backups[b]);
                     keys.push(backups[b].getKey());
-                    console.log('+ Backup ' + backups[b].getKey() + ' found');
+                    Narrator.info('Backup ' + backups[b].getKey() + ' found');
                 }
                 keys.push(retry.getKey());
-                console.log('+ Backup ' + retry.getKey() + ' found');
-                console.log('+ ' + keys.length + ' backups found');
+                Narrator.info('Backup ' + retry.getKey() + ' found');
+                Narrator.info(keys.length + ' backups found');
                 // If a backup exists for today then this has been fired purely as a retry
                 // attempt, and we just resend that then quit
                 if ( retry.isToday() ) {
-                    console.log('+ Retrying existing ICS file');
+                    Narrator.log('Retrying existing ICS file');
                     email.construct(retry.getEvents());
-                    console.log('+ Emailing ICS file');
+                    Narrator.log('Emailing ICS file');
                     const success: boolean = await email.sendEvents();
                     if ( success ) {
-                        console.log('+ Removing backup from database');
+                        Narrator.log('Removing backup from database');
                         client!.reset(keys);
                     } else {
-                        console.error('Unable to send email');
+                        Narrator.error('Unable to send email');
                     }
                     return;
                 }
             }
 
         } catch (e) {
-            console.error(e);
+            Narrator.error('Unexpected error initialising DB', e as Error);
             email.sendError('Error trying to initialise DB - The email should still send but may contain details already sent.', e);
         }
 
         // Now loop through the fixtures, finding sales dates, comparing them to already persisted ones,
         // and email out any new ones.
         try {
-            console.log('+ Downloading fixture list');
+            Narrator.heading('Downloading fixture list');
             const success: boolean = await fixtures.download();
             if ( !success ) {
                 throw('Unable to retrieve fixtures');
             }
-            console.log('+ Parsing for fixtures');
+            Narrator.log('Parsing for fixtures');
             const count: number = fixtures.find();
-            console.log('+ ' + count + ' fixtures found');
+            Narrator.info(count + ' fixtures found');
             if ( count > 0 ) {
-                console.log('+ Parsing individual fixtures');
-                const parsed: boolean = await fixtures.parseAll();
-                if ( !parsed ) {
-                    throw('Unable to parse fixtures');
-                }
+                Narrator.log('Parsing individual fixtures');
+                await fixtures.parseAll();
 
                 if ( persistable ) {
-                    console.log('+ Syncing with database');
+                    Narrator.log('Syncing with database');
                     for ( const fixture of fixtures.getFixtures() ) {
                         await client!.sync(fixture);
                     }
@@ -91,10 +90,10 @@ class TicketParser {
 
                 let events: Array<ICS.EventAttributes> = new Array<ICS.EventAttributes>();
                 if ( fixtures.hasChanged() ) {
-                    console.log('+ Generating ICS file');
+                    Narrator.log('Generating ICS file');
                     events = fixtures.getChanges();
                     if ( persistable ) {
-                        console.log('+ Storing email contents in case of failure');
+                        Narrator.log('Storing email contents in case of failure');
                         const backup: Backup = new Backup(new Date(), events);
                         client!.backup(backup);
                         keys.push(backup.getKey());
@@ -104,42 +103,73 @@ class TicketParser {
                     events = events.concat(retry.getEvents());
                 }
                 if ( events.length > 0 ) {
-                    console.log('+ Emailing ICS file');
+                    Narrator.log('Emailing ICS file');
                     email.construct(events);
                     const success: boolean = await email.sendEvents(fixtures.getFixtures(true));
                     if ( success ) {
                         if ( persistable ) {
-                            console.log('+ Removing ' + keys.length + ' backup' + (keys.length > 1 ? 's' : '') + ' from database');
+                            Narrator.log('Removing ' + keys.length + ' backup' + (keys.length > 1 ? 's' : '') + ' from database');
                             await client!.reset(keys);
                         }
                     } else {
-                        console.error('Unable to send email');
+                        Narrator.error('Unable to send email');
                     }
                 } else {
-                    console.log('+ No changes since last email');
+                    Narrator.info('No changes since last email');
                 }
             }
-            console.log('+ Ticket Parsing Complete');
-            console.log('----------------------------------------');
+            Narrator.success('Ticket Parsing Complete');
         } catch (e) {
-            console.error(e);
+            Narrator.error('Unexpected error trying to parse and send email', e as Error);
             email.sendError('Error trying to send LFC sales email', e);
         }
     }
-
 }
 
+const capture = ()  => {
+    const log = console.log;
+    const error = console.error;
+
+    const buffer: Array<string> = [];
+    const re = new RegExp(String.fromCodePoint(27) + '[[0-9;]*m', 'g');
+
+    console.log = (...args: unknown[]) => {
+        buffer.push(args.map(String).join(' ').replace(re, ''));
+        log(...args);
+    };
+
+    console.error = (...args: unknown[]) => {
+        buffer.push(args.map(String).join(' ').replace(re, ''));
+        error(...args);
+    };
+
+    return {
+        output(): string {
+            return buffer.join('\n');
+        },
+        clear(): void {
+            buffer.length = 0;
+        },
+        restore(): void {
+            console.log = log;
+            console.error = error;
+        }
+    };
+}
+
+const logger = capture();
 const isLambda: boolean = !!process.env.LAMBDA_TASK_ROOT;
 if ( isLambda ) {
     module.exports.handler = async () => {
-        console.log('----------------------------------------');
-        console.log('Running LFC Ticket Parser on AWS Lambda');
-        console.log('----------------------------------------');
+        Narrator.title('Running LFC Ticket Parser on AWS Lambda');
         await TicketParser.parse();
+        const email:Email = new Email();
+        email.sendLog(logger.output());
     };    
 } else {
-    console.log('----------------------------------------');
-    console.log('Running LFC Ticket Parser locally');
-    console.log('----------------------------------------');
-    TicketParser.parse();
+    Narrator.title('Running LFC Ticket Parser locally');
+    TicketParser.parse().then(() => {
+        const email:Email = new Email();
+        email.sendLog(logger.output());
+    });
 }

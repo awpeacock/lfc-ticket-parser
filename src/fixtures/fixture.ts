@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 import { EventAttributes } from 'ics';
 
+import { Narrator } from '@redpenguinstudio/herbert';
+
 import Sale from "./sale";
 
 /**
@@ -79,7 +81,7 @@ export default class Fixture {
         try {
             this.html = await fetch(process.env.DOMAIN + this.url).then(res => res.text());
         } catch (e) {
-            console.error(e);
+            Narrator.error('Unexpected error downloading a fixture', e as Error);
             return false;
         }
         return (this.html.length > 0);
@@ -104,7 +106,7 @@ export default class Fixture {
         }
             
         // Now, find each element representing a sale date, registration date, etc.
-        const re: RegExp = /<h3>.*?<span class="salename">(.+?)<\/span>.*?(?:<span class="prereqs">(.*?)<\/span>).*?<span class="status">(.+?)<\/span>\s*?(?:(?:<span class="whenavailable">(.+?)(\d{1,2}):(\d{2})([ap]m)<\/span>).*?)?<\/h3>.*?(?:(?:Buy.*?from (\d{1,2})(?:[:.](\d{2}))?([ap]m).*?([A-Z].*?)\.<).*?)?<\/li>/gs;
+        const re: RegExp = /<h3>.*?<span class="salename">(.+?)<\/span>.*?(?:<span class="prereqs">(.*?)<\/span>).*?<span class="status">(.+?)<\/span>\s*?(?:(?:<span class="whenavailable">(.+?)(\d{1,2}):(\d{2})([ap]m)<\/span>).*?)?<\/h3>.*?(?:(?:(?:Buy|Registration).*?from (\d{1,2})(?:[:.](\d{2}))?([ap]m).*?([A-Z].*?)\.<).*?)?<\/li>/gs;
         let match : Nullable<RegExpExecArray>;
         while ( (match = re.exec(this.html)) !== null ) {
 
@@ -158,7 +160,11 @@ export default class Fixture {
                 date.setHours(hours);
                 date.setMinutes(minutes);
             } else if ( match[8] ) {
-                date = new Date(match[11] + (/\s\d{4}$/.test(match[11]) ? '' : ' ' + new Date().getFullYear()));
+                let day = match[11];
+                if ( day.includes('until') ) {
+                    day = day.substring(0, day.indexOf(' until'));
+                }
+                date = new Date(day + (/\s\d{4}$/.test(day) ? '' : ' ' + new Date().getFullYear()));
                 const hours: number = parseInt(match[8]) + (match[10] == 'pm' ? 12: 0), minutes: number = (match[6] ? parseInt(match[6]) : 0);
                 date.setHours(hours);
                 date.setMinutes(minutes);

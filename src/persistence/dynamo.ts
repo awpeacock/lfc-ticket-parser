@@ -1,6 +1,8 @@
 import { DynamoDBClient, ListTablesCommand, ListTablesCommandOutput, CreateTableCommand, DeleteTableCommand, ScanCommand, BillingMode, waitUntilTableExists } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 
+import { Narrator } from "@redpenguinstudio/herbert";
+
 import Fixture from "../fixtures/fixture";
 import Client from "./client";
 import Backup from "./backup";
@@ -70,7 +72,7 @@ export default class DynamoDB extends Client {
             }
             return true;
         } catch (e) {
-            console.error(e);
+            Narrator.error('Unexpected error initialising DynamoDB', e as Error);
             return false;
         }
 
@@ -95,7 +97,7 @@ export default class DynamoDB extends Client {
             }
             return true;
         } catch (e) {
-            console.error(e);
+            Narrator.error('Unexpected error trying to delete DynamoDB tables', e as Error);
             return false;
         }
 
@@ -135,7 +137,7 @@ export default class DynamoDB extends Client {
             await this.docClient.send(put);
             return true;
         } catch (e) {
-            console.error(e);
+            Narrator.error('Unexpected error trying to add record to DynamoDB', e as Error);
             return false;
         }
 
@@ -158,7 +160,7 @@ export default class DynamoDB extends Client {
             await this.docClient.send(update);
             return true;
         } catch (e) {
-            console.error(e);
+            Narrator.error('Unexpected error trying to update DynamoDB record', e as Error);
             return false;
         }
 
@@ -171,7 +173,7 @@ export default class DynamoDB extends Client {
         try {
             existing = await this.get(fixture);
         } catch (e) {
-            console.error(e);
+            Narrator.error('Unexpected error syncing with DynamoDB', e as Error);
             // Always set as changed if we can't retrieve it, best to work on
             // theory of sending emails when we shouldn't is better than not
             // when we should and potentially missing a sale.
@@ -228,7 +230,7 @@ export default class DynamoDB extends Client {
             await this.docClient.send(put);
             return true;
         } catch (e) {
-            console.error(e);
+            Narrator.error('Unexpected error backing up to DynamoDB', e as Error);
             return false;
         }
 
@@ -267,7 +269,7 @@ export default class DynamoDB extends Client {
                 return backups;
             }
         } catch (e) {
-            console.error('Error attempting to restore backups - ' + e);
+            Narrator.error('Error attempting to restore backups from DynamoDB', e as Error);
             return [];
         }
         return [];
@@ -288,7 +290,7 @@ export default class DynamoDB extends Client {
             }
             return true;
         } catch (e) {
-            console.error(e);
+            Narrator.error('Unexpected error trying to reset DynamoDB', e as Error);
             return false;
         }
 

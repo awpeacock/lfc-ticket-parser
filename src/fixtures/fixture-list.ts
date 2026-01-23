@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 import * as ICS from 'ics'
 
+import { Narrator } from '@redpenguinstudio/herbert';
+
 import Fixture from './fixture';
 
 /**
@@ -31,7 +33,7 @@ export default class FixtureList {
         try {
             this.html = await fetch(url).then(res => res.text());
         } catch (e) {
-            console.error(e);
+            Narrator.error('Unexpected error downloading fixture list', e as Error);
             return false;
         }
         return (this.html.length > 0);
@@ -59,7 +61,9 @@ export default class FixtureList {
             // The "info" block contains all the information about opposition and kick-off
             const info: Nullable<RegExpMatchArray> = section.match(/<div class="info">.*<p>(.+?) v (.+?)<\/p>.*<span>(?:(.+?),\s*(\d{1,2}):(\d{2})([ap]m)|TBC)<\/span>/s);
             if ( info == null || info.length != 7 ) {
-                throw new Error('Invalid HTML format');
+                // Don't throw an error - log it and proceed to the next fixture so one failure doesn't prevent emails from going out
+                Narrator.error('Unable to parse HTML for "' + url + '"');
+                continue;
             }
             const home: string = info[1];
             const away: string = info[2];
@@ -141,7 +145,7 @@ export default class FixtureList {
             try {
                 fixture.find();
             } catch (e) {
-                console.error(e);
+                Narrator.error('Unexpected error parsing fixture list', e as Error);
                 success = false;
             }
         }

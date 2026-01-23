@@ -195,6 +195,7 @@ Reflect.set(fixtures[3], 'sales', [new Sale('Members Sale (3+)', Status.PENDING,
 export const Mocks = {
     
     console: {
+        log: jest.spyOn(console, 'log'),
         error: jest.spyOn(console, 'error'),
         debug: jest.spyOn(console, 'debug')
     },
@@ -207,6 +208,7 @@ export const Mocks = {
     fixtures: fixtures
 
 };
+Mocks.console.log.mockImplementation(() => null);
 Mocks.console.error.mockImplementation(() => null);
 Mocks.console.debug.mockImplementation(() => null);
 

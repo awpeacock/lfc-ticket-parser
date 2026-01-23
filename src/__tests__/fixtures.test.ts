@@ -2,7 +2,7 @@ import {describe, it, expect, jest} from '@jest/globals';
 import * as fs from 'fs';
 
 import { Fixture, FixtureList, Sale } from "../fixtures";
-import setup from "../setupTests";
+import setup, { Mocks } from "../setupTests";
 
 setup();
 
@@ -45,7 +45,7 @@ describe('Parsing the fixture list', () => {
         })
     });
 
-    it('should throw errors if it cannot parse the index page', async () => {
+    it('should not throw errors if it cannot parse a fixture on the index page but move on to the next fixture', async () => {
         
         const fetch = jest.spyOn(global, 'fetch');
         fetch.mockImplementationOnce(() => Promise.reject('Failure retrieving HTML')); 
@@ -62,7 +62,8 @@ describe('Parsing the fixture list', () => {
             return true;
         });
         await faulty.download();
-        expect(() => { faulty.find() }).toThrow();
+        expect(() => { faulty.find() }).not.toThrow();
+        expect(Mocks.console.error).toHaveBeenCalled();
         
     });
 

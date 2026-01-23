@@ -163,6 +163,20 @@ describe('Converting the fixture list and sending the calendar email', () => {
         expect(mails[0].attachments).toBeUndefined();
     });
 
+    it('should successfully send a log email and return true', async () => {
+        delete process.env.EMAIL_ERROR;
+        const date: string = new Date().getDate() + '/' + (new Date().getMonth()+1) + '/' + new Date().getFullYear();
+        const email: Email = new Email();
+        await expect(email.sendLog('Log message')).resolves.toBe(true);
+        const mails = mock.getSentMail();
+        expect(mails).not.toBeNull();
+        expect(mails.length).toBe(1);
+        expect(mails[0].from!.toString().startsWith(Email.FROM_NAME)).toBe(true);
+        expect(mails[0].subject).toEqual(Email.SUBJECT_LOG + ' (' + date + ')');
+        expect(mails[0].text).toBe('Log message');
+        expect(mails[0].attachments).toBeUndefined();
+    });
+
     it('should successfully handle errors in the email sending process and return false', async () => {
         const email: Email = new Email();
         email.construct(Mocks.events.bulk.sales);

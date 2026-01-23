@@ -2,7 +2,9 @@ import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import { Attachment } from 'nodemailer/lib/mailer';
 import SMTPTransport, { MailOptions } from 'nodemailer/lib/smtp-transport';
-import * as ICS from 'ics'
+import * as ICS from 'ics';
+
+import { Narrator } from '@redpenguinstudio/herbert';
 
 import { Fixture } from '../fixtures';
 
@@ -27,6 +29,8 @@ export default class Email {
     static SUBJECT_SALES: string = 'Latest LFC ticket sales dates';
     /** The subject line that will appear on all error emails. */
     static SUBJECT_ERROR: string = 'LFC Ticket Parser ERROR';
+    /** The subject line that will appear on all log emails. */
+    static SUBJECT_LOG: string = 'LFC Ticket Parser Daily Log';
 
     /** The content that will make up the email body for the sales dates emails. */
     static BODY_SALES: string = 'Please find attached the latest sales dates for LFC fixtures.  Load the file using your preferred calendar software.';
@@ -136,6 +140,24 @@ export default class Email {
     }
 
     /**
+     * Sends a log email. 
+     * @param {string} log - The log to be sent.
+     * @return {Promise<boolean>} Indicator of the success, or otherwise, of the attempt.
+     * @throws Will throw an error if anything fails while attempting to send the email.
+     */
+    async sendLog(log: string): Promise<boolean> {
+
+        let to: Undefinable<string> = process.env.EMAIL_ERROR;
+        if ( to == undefined ) {
+            to = process.env.EMAIL_TO;
+        }
+        const date: string = new Date().getDate() + '/' + (new Date().getMonth()+1) + '/' + new Date().getFullYear();
+        const subject: string = Email.SUBJECT_LOG + ' (' + date + ')';
+        return this.send(to, subject, log);
+
+    }
+
+    /**
      * The method that actually executes the sending of an email, regardless of type or content.
      * @param {Undefinale<string>} to - The email address(es) of the recipient. 
      * @param {string} subject - The email's subject line.
@@ -181,7 +203,7 @@ export default class Email {
             if ( info.response.includes('250 OK') ) {
                 return true;
             } else {
-                console.error('Response from mail server: ', info.response);
+                Narrator.error('Invalid response from mail server: ' + info.response);
                 return false;
             }
 
@@ -189,7 +211,7 @@ export default class Email {
 
             // We don't want to throw any errors in here, as we could get ourselves in trouble trying
             // to email ourselves about any errors faced sending emails!
-            console.error(e);
+            Narrator.error('Unexpected error sending email', e as Error);
             return false;
 
         }
@@ -375,7 +397,7 @@ export default class Email {
 
         log += cleansed.length + ' entries now in array';
         if ( process.env.DEBUG ) {
-            console.debug(log);
+            Narrator.log(log);
         }
         return cleansed;
 
