@@ -1,17 +1,19 @@
 import dotenv from 'dotenv';
 import * as ICS from 'ics';
+import { SSMClient, GetParametersByPathCommand } from '@aws-sdk/client-ssm';
+
 
 import { Narrator } from '@redpenguinstudio/herbert';
 
+import { Constants } from './constants';
 import { FixtureList } from "./fixtures";
 import { PersistenceFactory, Client, Backup } from './persistence';
 import { Email } from './distribution';
 
 class TicketParser {
 
-    static async parse(): Promise<void> {
+    static async parse(environment: string): Promise<void> {
 
-        dotenv.config({ debug: false, quiet: true });
         const email:Email = new Email();
         const fixtures: FixtureList = new FixtureList();
 
@@ -20,14 +22,14 @@ class TicketParser {
         let client: Client, persistable: boolean = false, retry: Nullable<Backup> = null;
         const keys: Array<string> = new Array<string>();
         try {
-            const db: Database = process.env.DB_CLIENT as Database;
-            const table: string = process.env.DB_TABLE as string;
-            const backup: string = process.env.DB_BACKUP as string;
-            if ( db == null || table == null || backup == null ) {
+            const db: Database = (process.env.DB_CLIENT || Constants.DATABASE) as Database;
+            const table: string = (process.env.DB_TABLE || Constants.TABLE_SALES) as string;
+            const backup: string = (process.env.DB_BACKUP || Constants.TABLE_BACKUP) as string;
+            if ( environment == null || db == null || table == null || backup == null ) {
                 throw new Error('No database variables set');
             }
             Narrator.heading('Initialising "' + db + '" database');
-            client = PersistenceFactory.getClient(db, table, backup);
+            client = PersistenceFactory.getClient(db, table + '-' + environment, backup + '-' + environment);
             persistable = await client.init();
 
             // Before we do anything else, let's just check if we have a backup waiting - we
@@ -63,7 +65,7 @@ class TicketParser {
 
         } catch (e) {
             Narrator.error('Unexpected error initialising DB', e as Error);
-            email.sendError('Error trying to initialise DB - The email should still send but may contain details already sent.', e);
+            await email.sendError('Error trying to initialise DB - The email should still send but may contain details already sent.', e);
         }
 
         // Now loop through the fixtures, finding sales dates, comparing them to already persisted ones,
@@ -121,7 +123,7 @@ class TicketParser {
             Narrator.success('Ticket Parsing Complete');
         } catch (e) {
             Narrator.error('Unexpected error trying to parse and send email', e as Error);
-            email.sendError('Error trying to send LFC sales email', e);
+            await email.sendError('Error trying to send LFC sales email', e);
         }
     }
 }
@@ -157,19 +159,49 @@ const capture = ()  => {
     };
 }
 
+dotenv.config({ debug: false, quiet: true });
+const environment: string = (process.env.ENVIRONMENT || Constants.ENV_DEV) as string;
+const debug: boolean = process.env.DEBUG === 'true';
+
 const logger = capture();
 const isLambda: boolean = !!process.env.LAMBDA_TASK_ROOT;
 if ( isLambda ) {
     module.exports.handler = async () => {
         Narrator.title('Running LFC Ticket Parser on AWS Lambda');
-        await TicketParser.parse();
+
+        Narrator.heading('Retrieving SSM secrets');
+        const client = new SSMClient({});
+        let nextToken: string | undefined;
+        do {
+            const res = await client.send(
+                new GetParametersByPathCommand({
+                    Path: '/lfct/' + environment.toLowerCase(),
+                    Recursive: false,
+                    WithDecryption: true,
+                    NextToken: nextToken,
+                })
+            );
+            for (const p of res.Parameters ?? []) {
+                const key = p.Name!.split('/').pop()!;
+                if (!(key in process.env)) {
+                    process.env[key] = p.Value!;
+                }
+            }
+            nextToken = res.NextToken;
+        } while (nextToken);
+
+        await TicketParser.parse(environment);
         const email:Email = new Email();
-        email.sendLog(logger.output());
+        if (debug) {
+            await email.sendLog(logger.output());
+        }
     };    
 } else {
     Narrator.title('Running LFC Ticket Parser locally');
-    TicketParser.parse().then(() => {
+    TicketParser.parse(environment).then(() => {
         const email:Email = new Email();
-        email.sendLog(logger.output());
+        if (debug) {
+            email.sendLog(logger.output());
+        }
     });
 }

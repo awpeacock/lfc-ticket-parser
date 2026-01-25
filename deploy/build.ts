@@ -14,15 +14,15 @@ class Builder {
             fs.cpSync('./dist', '../' + this.path, {recursive: true});
             return true;
         } catch (e) {
-            Narrator.error('Unable to copy folder', e);
+            Narrator.error('Unable to copy folder', e as Error);
             return false;
         }
     }
 
-    async installDependency(module) {
+    async installDependency(module: string) {
         try {
             const result = await new Promise((resolve, reject) => {
-                cp.exec('npm install ' + module, {cwd: '../' + this.path}, (error, stdout, stderr) => {
+                cp.exec('npm install ' + module, {cwd: '../' + this.path}, (error) => {
                     if ( error ) {
                         reject(error);
                     } else {
@@ -30,10 +30,10 @@ class Builder {
                     }
                 });
             });
-            Narrator.info(result);
+            Narrator.info(result as string);
             return true;
         } catch (e) {
-            Narrator.error('"' + module + '" install failed', e);
+            Narrator.error('"' + module + '" install failed', e as Error);
             return false;
         }
     }
@@ -57,7 +57,7 @@ class Builder {
             zip.directory('../' + this.path, false);
             await zip.finalize();
         } catch (e) {
-            Narrator.error('Zipping the folder failed');
+            Narrator.error('Zipping the folder failed', e as Error);
         }
     }
 
@@ -66,19 +66,23 @@ class Builder {
         try {
             fs.rmSync('../lfct-aws-js', {recursive: true, force: true});
         } catch (e) {
-            Narrator.error('Unable to remove folder', e);
+            Narrator.error('Unable to remove folder', e as Error);
         }
     }
 
 }
 
-const builder = new Builder();
-Narrator.title('Building AWS deployment');
-if ( builder.copyFolder() ) {
-    Narrator.heading('Installing node module dependencies');
-    if ( await builder.installDependency('dotenv') && await builder.installDependency('ics') && await builder.installDependency('nodemailer') && await builder.installDependency('@redpenguinstudio/herbert') ) {
-        await builder.createZip();
+const run = async () => {
+    const builder = new Builder();
+    Narrator.title('Building AWS deployment');
+    if ( builder.copyFolder() ) {
+        Narrator.heading('Installing node module dependencies');
+        if ( await builder.installDependency('dotenv') && await builder.installDependency('ics') && await builder.installDependency('nodemailer') && await builder.installDependency('@redpenguinstudio/herbert') ) {
+            await builder.createZip();
+        }
+        builder.teardown();
     }
-    builder.teardown();
-}
-Narrator.success('Build and bundle of AWS Lambda zip complete');
+    Narrator.success('Build and bundle of AWS Lambda zip complete');
+};
+
+run();

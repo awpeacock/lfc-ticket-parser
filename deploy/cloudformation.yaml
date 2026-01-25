@@ -1,0 +1,279 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Lambda, DynamoDB, SSM and Cloudwatch'
+
+Parameters:
+  LambdaFunctionName:
+    Type: String
+    Default: 'LFCT-Parser'
+  DatabaseClient:
+    Type: String
+    Default: 'DynamoDB'
+  DynamoDBSalesTableName:
+    Type: String
+    Default: 'LFCT-Sales'
+  DynamoDBBackupTableName:
+    Type: String
+    Default: 'LFCT-Backup'
+  Environment:
+    Type: String
+    AllowedValues:
+      - Dev
+      - Test
+      - Production
+    Default: 'Dev'
+  AppVersion:
+    Type: String
+    Default: ''
+  S3Version:
+    Type: String
+    Default: ''
+  LFCDomain:
+    Type: String
+    Default: 'https://www.liverpoolfc.com'
+  LFCPath:
+    Type: String
+    Default: '/tickets/tickets-availability'
+  EmailPort:
+    Type: String
+    Default: '465'
+  EmailSecure:
+    Type: String
+    Default: 'true'
+  EmailFrom:
+    Type: String
+    Default: ''
+
+Mappings:
+  EnvironmentMap:
+    Dev:
+      Lower: dev
+    Test:
+      Lower: test
+    Production:
+      Lower: production
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, Production]
+  IsDev: !Equals [!Ref Environment, Dev]
+  IsNotDev: !Not [!Condition IsDev]
+  CreateLambda: !And
+    - !Not [!Equals [!Ref S3Version, '']]
+    - !Not [!Condition IsDev]
+  CreateSchedule: !And
+    - !Condition CreateLambda
+    - !Condition IsProduction
+
+Resources:
+  LambdaFunction:
+    Condition: CreateLambda
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${LambdaFunctionName}-${Environment}'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: !GetAtt LambdaRole.Arn
+      Code:
+        S3Bucket: !Sub 
+          - 'lfct-code-${env}-${AWS::AccountId}'
+          - env: !FindInMap [EnvironmentMap, !Ref Environment, Lower]
+        S3Key: !Sub 'lfct-aws-js.zip'
+        S3ObjectVersion: !Ref S3Version
+      Timeout: 60
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          DB_CLIENT: !Ref DatabaseClient
+          DB_TABLE: !Ref DynamoDBSalesTableName
+          DB_BACKUP: !Ref DynamoDBBackupTableName
+          DOMAIN: !Ref LFCDomain
+          INDEX_URL: !Ref LFCPath
+          EMAIL_PORT: !Ref EmailPort
+          EMAIL_SECURE: !Ref EmailSecure
+          EMAIL_FROM: !Ref EmailFrom
+
+  LambdaRole:
+    Condition: CreateLambda
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${LambdaFunctionName}-${Environment}-LambdaRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ReadSecrets
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParametersByPath
+                Resource:
+                  - !Sub 
+                    - 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/lfct/${env}/*'
+                    - env: !FindInMap [EnvironmentMap, !Ref Environment, Lower]
+                  - !Sub 
+                    - 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/lfct/${env}'
+                    - env: !FindInMap [EnvironmentMap, !Ref Environment, Lower]
+        - PolicyName: DynamoDBRuntimeAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:DescribeTable
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Scan
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoDBSalesTableName}-${Environment}
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoDBBackupTableName}-${Environment}
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  LambdaLogGroup:
+    Condition: CreateLambda
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${LambdaFunctionName}-${Environment}'
+      RetentionInDays: 14
+
+  LambdaVersion:
+    Condition: CreateLambda
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !Ref LambdaFunction
+      Description: !Sub 'LFCT-${AppVersion}'
+
+  SalesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${DynamoDBSalesTableName}-${Environment}'
+      AttributeDefinitions:
+        - AttributeName: Fixture
+          AttributeType: S
+      KeySchema:
+        - AttributeName: Fixture
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+
+  BackupTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${DynamoDBBackupTableName}-${Environment}'
+      AttributeDefinitions:
+        - AttributeName: Date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: Date
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+          SSEEnabled: true
+
+  LambdaSchedule:
+    Condition: CreateSchedule
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub 'LFCT-Parser-${Environment}-DailySchedule'
+      State: ENABLED
+      ScheduleExpression: 'cron(30 18 * * ? *)'
+      ScheduleExpressionTimezone: 'UTC'
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Target:
+        Arn: !GetAtt LambdaFunction.Arn
+        RoleArn: !GetAtt LambdaScheduleRole.Arn
+
+  LambdaScheduleRole:
+    Condition: CreateSchedule
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${LambdaFunctionName}-${Environment}-ScheduleRole'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SchedulerInvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt LambdaFunction.Arn
+
+  CodeBucket:
+    Condition: IsNotDev
+    Type: AWS::S3::Bucket
+    Properties:
+        BucketName: !Sub 
+          - 'lfct-code-${env}-${AWS::AccountId}'
+          - env: !FindInMap [EnvironmentMap, !Ref Environment, Lower]
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        VersioningConfiguration:
+          Status: Enabled
+
+  SSMEmailHost:
+    Condition: IsNotDev
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub 
+        - '/lfct/${env}/EMAIL_HOST'
+        - env: !FindInMap [EnvironmentMap, !Ref Environment, Lower]
+      Type: String
+      Value: '*****'
+
+  SSMEmailUser:
+    Condition: IsNotDev
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub 
+        - '/lfct/${env}/EMAIL_USER'
+        - env: !FindInMap [EnvironmentMap, !Ref Environment, Lower]
+      Type: String
+      Value: '*****'
+
+  SSMEmailPassword:
+    Condition: IsNotDev
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub 
+        - '/lfct/${env}/EMAIL_PASS'
+        - env: !FindInMap [EnvironmentMap, !Ref Environment, Lower]
+      Type: String
+      Value: '*****'
+
+  SSMEmailTo:
+    Condition: IsNotDev
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub 
+        - '/lfct/${env}/EMAIL_TO'
+        - env: !FindInMap [EnvironmentMap, !Ref Environment, Lower]
+      Type: String
+      Value: '*****'
+
+  SSMEmailError:
+    Condition: IsNotDev
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub 
+        - '/lfct/${env}/EMAIL_ERROR'
+        - env: !FindInMap [EnvironmentMap, !Ref Environment, Lower]
+      Type: String
+      Value: '*****'

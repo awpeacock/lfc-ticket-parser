@@ -5,5 +5,6 @@ module.exports = {
     "^.+.tsx?$": ["ts-jest",{}],
   },
   testPathIgnorePatterns: ['<rootDir>/dist/'],
-  collectCoverage: true
+  collectCoverage: true,
+  coveragePathIgnorePatterns: ['/setupTests\\.(ts|js)$'],
 };

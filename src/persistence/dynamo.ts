@@ -1,4 +1,4 @@
-import { DynamoDBClient, ListTablesCommand, ListTablesCommandOutput, CreateTableCommand, DeleteTableCommand, ScanCommand, BillingMode, waitUntilTableExists } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, DescribeTableCommand, ScanCommand } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 
 import { Narrator } from "@redpenguinstudio/herbert";
@@ -20,84 +20,19 @@ export default class DynamoDB extends Client {
     async init(): Promise<boolean> {
         
         try {
-            const list: ListTablesCommand = new ListTablesCommand({});
-            const response: ListTablesCommandOutput = await this.client.send(list);
-            if ( !response.TableNames?.includes(this.tables.fixtures) ) {
-                const command = new CreateTableCommand({
-                    TableName: this.tables.fixtures,
-                    BillingMode: BillingMode.PROVISIONED,
-                    ProvisionedThroughput: {
-                        ReadCapacityUnits: 1,
-                        WriteCapacityUnits: 1
-                    },
-                    AttributeDefinitions: [
-                        { 
-                            AttributeName: "Fixture", 
-                            AttributeType: "S" 
-                        }
-                    ],
-                    KeySchema: [
-                        { 
-                            AttributeName: "Fixture", 
-                            KeyType: "HASH" 
-                        }
-                    ]
-                });
-                await this.client.send(command);
-                await waitUntilTableExists({ client: this.client, maxWaitTime: 30 }, { TableName: this.tables.fixtures });
-            }
-            if ( !response.TableNames?.includes(this.tables.backup) ) {
-                const command = new CreateTableCommand({
-                    TableName: this.tables.backup,
-                    BillingMode: BillingMode.PROVISIONED,
-                    ProvisionedThroughput: {
-                        ReadCapacityUnits: 1,
-                        WriteCapacityUnits: 1
-                    },
-                    AttributeDefinitions: [
-                        { 
-                            AttributeName: "Date", 
-                            AttributeType: "S" 
-                        }
-                    ],
-                    KeySchema: [
-                        { 
-                            AttributeName: "Date", 
-                            KeyType: "HASH" 
-                        }
-                    ]
-                });
-                await this.client.send(command);
-                await waitUntilTableExists({ client: this.client, maxWaitTime: 30 }, { TableName: this.tables.backup });
-            }
+            await this.client.send(
+                new DescribeTableCommand({ TableName: this.tables.fixtures })
+            );
+            await this.client.send(
+                new DescribeTableCommand({ TableName: this.tables.backup })
+            );
+            
             return true;
         } catch (e) {
+            if ((e as Error).name === "ResourceNotFoundException") {
+                return false;
+            }
             Narrator.error('Unexpected error initialising DynamoDB', e as Error);
-            return false;
-        }
-
-    }
-
-    async destroy(): Promise<boolean> {
-        
-        try {
-            const list: ListTablesCommand = new ListTablesCommand({});
-            const response: ListTablesCommandOutput = await this.client.send(list);
-            if ( response.TableNames?.includes(this.tables.fixtures) ) {
-                const command = new DeleteTableCommand({
-                    TableName: this.tables.fixtures
-                });
-                await this.client.send(command);
-            }
-            if ( response.TableNames?.includes(this.tables.backup) ) {
-                const command = new DeleteTableCommand({
-                    TableName: this.tables.backup
-                });
-                await this.client.send(command);
-            }
-            return true;
-        } catch (e) {
-            Narrator.error('Unexpected error trying to delete DynamoDB tables', e as Error);
             return false;
         }
 

@@ -33,13 +33,6 @@ export default abstract class Client {
     abstract init(): Promise<boolean>;
 
     /**
-     * Deletes the tables storing fixture and backup data.  This should not throw any errors but, rather, will handle any 
-     * errors and just return false.
-     * @return {Promise<boolean>} A boolean indicating the success, or otherwise, of the operation.
-     */
-    abstract destroy(): Promise<boolean>;
-
-    /**
      * Searches the database for the fixture provided (by the key created by the Fixture class),
      * and returns the JSON string containing all sales if it is found. 
      * @param {Fixture} fixture - The fixture to be retreieved from the database.
