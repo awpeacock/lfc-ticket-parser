@@ -41,7 +41,8 @@ jobs:
           ENVIRONMENT: Test
 
           DOMAIN: https://www.liverpoolfc.com
-          INDEX_URL: /tickets/tickets-availability
+          INDEX_URL: /tickets?category=mens
+          HTML_FORMAT: 2026
 
           EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
           EMAIL_PORT: ${{ vars.EMAIL_PORT }}
@@ -88,6 +89,7 @@ jobs:
 
           DOMAIN: ${{ vars.DOMAIN }}
           INDEX_URL: ${{ vars.INDEX_URL }}
+          HTML_FORMAT: ${{ vars.HTML_FORMAT }}
 
           EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
           EMAIL_PORT: ${{ vars.EMAIL_PORT }}

@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
-import { Attachment } from 'nodemailer/lib/mailer';
-import SMTPTransport, { MailOptions } from 'nodemailer/lib/smtp-transport';
+import type { SendMailOptions } from 'nodemailer';
+import type Mail from 'nodemailer/lib/mailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import * as ICS from 'ics';
 
 import { Narrator } from '@redpenguinstudio/herbert';
@@ -33,7 +34,7 @@ export default class Email {
     static SUBJECT_LOG: string = 'LFC Ticket Parser Daily Log';
 
     /** The content that will make up the email body for the sales dates emails. */
-    static BODY_SALES: string = 'Please find attached the latest sales dates for LFC fixtures.  Load the file using your preferred calendar software.';
+    static BODY_SALES: string = 'Please find attached the latest sales dates for LFC fixtures. Load the file using your preferred calendar software.';
 
     /**
      * Populates the object with all the events relevant to that particular email, that will
@@ -90,9 +91,9 @@ export default class Email {
         const date: string = new Date().getDate() + '/' + (new Date().getMonth()+1) + '/' + new Date().getFullYear();
         const subject: string = Email.SUBJECT_SALES + ' (' + date + ')';
         let text: string = Email.BODY_SALES, html: string = '<p>' + Email.BODY_SALES + '</p>';
-        const attachment: Attachment = {
+        const attachment: Mail.Attachment = {
             filename: 'lfcinfo.ics',
-            content: this.ics!.value
+            content: String(this.ics!.value)
         };
 
         // Now add some plain text for all upcoming events (regardless if included in the ICS attachment)
@@ -159,15 +160,15 @@ export default class Email {
 
     /**
      * The method that actually executes the sending of an email, regardless of type or content.
-     * @param {Undefinale<string>} to - The email address(es) of the recipient. 
+     * @param {Undefinable<string>} to - The email address(es) of the recipient. 
      * @param {string} subject - The email's subject line.
      * @param {string} body - The main content of the email.
-     * @param {Attachment} attachment - (Optional) Any attachment to be sent with the email.
+     * @param {Mail.Attachment} attachment - (Optional) Any attachment to be sent with the email.
      * @param {string} html - (Optional) HTML version of the main body content.
      * @return {Promise<boolean>} Indicator of the success, or otherwise, of the attempt.
      * @throws Will throw an error if anything fails while attempting to send the email.
      */
-    private async send(to: Undefinable<string>, subject: string, body: string, attachment?: Attachment, html?: string): Promise<boolean> {
+    private async send(to: Undefinable<string>, subject: string, body: string, attachment?: Mail.Attachment, html?: string): Promise<boolean> {
 
         try {
 
@@ -185,12 +186,14 @@ export default class Email {
                     pass: process.env.EMAIL_PASS,
                 }
             };
-            const mailOptions: MailOptions = {
+
+            const mailOptions: SendMailOptions = {
                 from: Email.FROM_NAME + '<' + process.env.EMAIL_FROM + '>',
                 to: to,
                 subject: subject,
                 text: body
             };
+
             if ( attachment ) {
                 mailOptions.attachments = [attachment];
             }
@@ -198,12 +201,13 @@ export default class Email {
                 mailOptions.html = html;
             }
 
-            const transporter: nodemailer.Transporter = nodemailer.createTransport(smtpOptions);
-            const info: SMTPTransport.SentMessageInfo = await transporter.sendMail(mailOptions);
-            if ( info.response.includes('250 OK') ) {
+            const transporter = nodemailer.createTransport(smtpOptions);
+            const info = await transporter.sendMail(mailOptions);
+
+            if ( info?.response?.includes('250 OK') ) {
                 return true;
             } else {
-                Narrator.error('Invalid response from mail server: ' + info.response);
+                Narrator.error('Invalid response from mail server: ' + (info?.response ?? 'No response'));
                 return false;
             }
 

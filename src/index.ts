@@ -165,38 +165,39 @@ const debug: boolean = process.env.DEBUG === 'true';
 
 const logger = capture();
 const isLambda: boolean = !!process.env.LAMBDA_TASK_ROOT;
-if ( isLambda ) {
-    module.exports.handler = async () => {
-        Narrator.title('Running LFC Ticket Parser on AWS Lambda');
 
-        Narrator.heading('Retrieving SSM secrets');
-        const client = new SSMClient({});
-        let nextToken: string | undefined;
-        do {
-            const res = await client.send(
-                new GetParametersByPathCommand({
-                    Path: '/lfct/' + environment.toLowerCase(),
-                    Recursive: false,
-                    WithDecryption: true,
-                    NextToken: nextToken,
-                })
-            );
-            for (const p of res.Parameters ?? []) {
-                const key = p.Name!.split('/').pop()!;
-                if (!(key in process.env)) {
-                    process.env[key] = p.Value!;
-                }
+export const handler = async (): Promise<void> => {
+    Narrator.title('Running LFC Ticket Parser on AWS Lambda');
+
+    Narrator.heading('Retrieving SSM secrets');
+    const client = new SSMClient({});
+    let nextToken: string | undefined;
+    do {
+        const res = await client.send(
+            new GetParametersByPathCommand({
+                Path: '/lfct/' + environment.toLowerCase(),
+                Recursive: false,
+                WithDecryption: true,
+                NextToken: nextToken,
+            })
+        );
+        for (const p of res.Parameters ?? []) {
+            const key = p.Name!.split('/').pop()!;
+            if (!(key in process.env)) {
+                process.env[key] = p.Value!;
             }
-            nextToken = res.NextToken;
-        } while (nextToken);
-
-        await TicketParser.parse(environment);
-        const email:Email = new Email();
-        if (debug) {
-            await email.sendLog(logger.output());
         }
-    };    
-} else {
+        nextToken = res.NextToken;
+    } while (nextToken);
+
+    await TicketParser.parse(environment);
+    const email:Email = new Email();
+    if (debug) {
+        await email.sendLog(logger.output());
+    }
+};    
+
+if (!isLambda) {
     Narrator.title('Running LFC Ticket Parser locally');
     TicketParser.parse(environment).then(() => {
         const email:Email = new Email();

@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as cp from 'child_process';
-import archiver from 'archiver';
+import * as fs from 'node:fs';
+import * as cp from 'node:child_process';
+import { ZipArchive } from 'archiver';
 
 import { Narrator } from '@redpenguinstudio/herbert';
 
@@ -22,7 +22,7 @@ class Builder {
     async installDependency(module: string) {
         try {
             const result = await new Promise((resolve, reject) => {
-                cp.exec('npm install ' + module, {cwd: '../' + this.path}, (error) => {
+                cp.exec('npm install ' + module, {cwd: '../' + this.path}, (error: cp.ExecException | null, stdout: string, stderr: string) => {
                     if ( error ) {
                         reject(error);
                     } else {
@@ -40,25 +40,33 @@ class Builder {
 
     async createZip() {
         Narrator.heading('Zipping up folder');
-        try {
-            const target = 'outputs';
-            if ( !fs.existsSync(target) ){
-                fs.mkdirSync(target);
+        return new Promise<void>((resolve, reject) => {
+            try {
+                const target = 'outputs';
+                if ( !fs.existsSync(target) ){
+                    fs.mkdirSync(target);
+                }
+                const output = fs.createWriteStream('./' + target + '/' + this.path + '.zip');
+                output.on('close', () => {
+                    Narrator.info('Zip complete: ' + zip.pointer() + ' total bytes');
+                    resolve();
+                });
+                output.on('error', function(e: Error){
+                    return Narrator.error('Creating the zip file failed', e);
+                });
+                const zip = new ZipArchive({
+                    zlib: { level: 9 }, // Sets the compression level.
+                });
+                zip.on('error', function(e: Error){
+                    return Narrator.error('Building the zip file failed', e);
+                });
+                zip.pipe(output);
+                zip.directory('../' + this.path, false);
+                zip.finalize();
+            } catch (e) {
+                Narrator.error('Zipping the folder failed', e as Error);
             }
-            const output = fs.createWriteStream('./' + target + '/' + this.path + '.zip');
-            output.on('error', function(e){
-                return Narrator.error('Creating the zip file failed', e);
-            });
-            const zip = archiver('zip');
-            zip.on('error', function(e){
-                return Narrator.error('Building the zip file failed', e);
-            });
-            zip.pipe(output);
-            zip.directory('../' + this.path, false);
-            await zip.finalize();
-        } catch (e) {
-            Narrator.error('Zipping the folder failed', e as Error);
-        }
+        });
     }
 
     teardown() {

@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
 import { mockClient } from "aws-sdk-client-mock";
 import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
@@ -12,6 +13,8 @@ setup();
 
 describe('Checking for amendments', () => {
 
+    jest.replaceProperty(process.env, 'HTML_FORMAT', '2024');   
+    
     let index: FixtureList;
     let fixtures: Array<Fixture> = [];
 

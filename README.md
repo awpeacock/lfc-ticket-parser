@@ -23,6 +23,12 @@ DOMAIN=https://www.liverpoolfc.com
 INDEX_URL=/tickets/tickets-availability
 ```
 
+The official website changes the format/structure of the HTML from time to time.  This parser will allow you to configure it to match any version according to date:
+
+```properties
+HTML_FORMAT=YYYY
+```
+
 The parser will attempt to email the generated ICS file via SMTP after processing, and these properties are required in order for it to be able to do so (`EMAIL_PORT` and `EMAIL_SECURE` can be amended if you wish to communicate with your mail server insecurely).  If `EMAIL_ERROR` is not supplied, then the value supplied for `EMAIL_TO` will be used for all error alerts.
 
 ```properties

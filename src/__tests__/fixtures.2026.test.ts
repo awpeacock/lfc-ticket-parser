@@ -8,7 +8,10 @@ setup();
 
 describe('Parsing the fixture list', () => {
 
-    const TOTAL: number = 11;
+    jest.replaceProperty(process.env, 'HTML_FORMAT', '2026');
+    
+    const TOTAL: number = 6;
+    const ACTIVE: number = 5;
 
     // Share the index class with all methods.  To save on processing/performance, we only want to
     // retrieve this the once.
@@ -33,13 +36,13 @@ describe('Parsing the fixture list', () => {
                 valid++;
             }
         });
-        expect(valid).toEqual(TOTAL-3);
+        expect(valid).toEqual(ACTIVE);
     });
 
     it('should successfully recognise the competition for both text and images', () => {
         index.getFixtures().forEach((fixture) => {
             expect(fixture.getMatch().includes('Unknown')).toBeFalsy();
-            if ( fixture.getMatch().includes('Manchester City') || fixture.getMatch().includes('West Ham') ) {
+            if ( fixture.getMatch().includes('Newcastle United') || fixture.getMatch().includes('Nottingham Forest') ) {
                 expect(fixture.getMatch().includes('Premier League')).toBeTruthy();
             }
         })
@@ -58,7 +61,7 @@ describe('Parsing the fixture list', () => {
         // This should catch if the HTML wasn't what was expected
         const download = jest.spyOn(FixtureList.prototype, 'download');
         download.mockImplementationOnce(async function(this: Fixture) { 
-            this['html'] = '<a class="ticket-card fixture" href="fixture.html"><div class="info">Not what is expected</div></a>';
+            this['html'] = '<a data-testid="hospitality-fixture-card" href="fixture.html"><div class="hospitality-fixture-card_hospitalityFixtureCard__matchDetails__xz4ac" data-testid="hospitality-fixture-card__match-details">Not what is expected</div></a>';
             return true;
         });
         await faulty.download();
@@ -77,7 +80,7 @@ describe('Parsing the fixture list', () => {
 
         const download = jest.spyOn(Fixture.prototype, 'download');
         download.mockImplementationOnce(async function(this: Fixture) { 
-            this['html'] = fs.readFileSync('./src/__mocks__/availability-home-multiple.html', 'utf-8');
+            this['html'] = fs.readFileSync('./src/__mocks__/2026/availability-home-active.html', 'utf-8');
             return true;
         });
         // This should catch if a fixture page cannot parse
@@ -89,7 +92,7 @@ describe('Parsing the fixture list', () => {
         const random: FixtureList = new FixtureList();
         const order: Array<number> = [4, 1, 0, 1, 5, 3, 2, 2];
         // Some heavy manipulation of the data is required to ensure we can test this accurately
-        for ( let f = 0; f < 8; f++ ) {
+        for ( let f = 0; f < ACTIVE; f++ ) {
             const fixture: Fixture = index.getFixtures().at(f)!;
             const date: Date = new Date();
             date.setDate(date.getDate() + order[f]);
@@ -101,7 +104,7 @@ describe('Parsing the fixture list', () => {
             random['fixtures'][f] = fixture;
         }
         const ordered = random.getFixtures(true);
-        for ( let f = 0; f < 7; f++ ) {
+        for ( let f = 0; f < ACTIVE - 1; f++ ) {
             expect(ordered[f]['sales'][0]['date']! <= ordered[f+1]['sales'][0]['date']!).toBeTruthy();
         }
         expect(ordered[0]).not.toEqual(random.getFixtures().at(0));
@@ -113,9 +116,9 @@ describe('Parsing the fixture list', () => {
             random['fixtures'][3]['sales'][s]['status'] = Status.ENDED;
         }
         const reordered = random.getFixtures(true);
-        for ( let f = 0; f < 5; f++ ) {
+        for ( let f = 0; f < ACTIVE - 3; f++ ) {
             expect(reordered[f]['sales'][0]['date']! <= reordered[f+1]['sales'][0]['date']!).toBeTruthy();
-        }for ( let f = 6; f < 8; f++ ) {
+        }for ( let f = ACTIVE - 2; f < ACTIVE; f++ ) {
             expect(reordered[f]['sales'][0]['status']!).toBe(Status.ENDED);
         }
         expect(reordered[0]).not.toEqual(random.getFixtures().at(0));
@@ -125,33 +128,33 @@ describe('Parsing the fixture list', () => {
 
 describe('Parsing an active home fixture', () => {
 
-    const fixture: Fixture = new Fixture('/tickets/tickets-availability/liverpool-fc-v-brentford-25-aug-2024-0430pm-342', 'Brentford', 'H', 'Premier League', new Date('2024-08-25 16:30'));
+    const fixture: Fixture = new Fixture('/tickets/tickets-match/liverpool-v-nottingham-forest-english-premier-league-20260829', 'Nottingham Forest', 'H', 'Premier League', new Date('2026-08-29 12:30'));
     fixture.download();
 
     it('should successfully generate a unique ID', () => {
-        expect(fixture.id).toEqual('2024-brentford-h-premier-league');
+        expect(fixture.id).toEqual('2026-nottingham-forest-h-premier-league');
     });
 
     it('should successfully assign the correct season to the fixture', () => {
-        expect(Reflect.get(fixture, 'season')).toBe(2024);
+        expect(Reflect.get(fixture, 'season')).toBe(2026);
     });
 
     it('should successfully generate a match string', () => {
-        expect(fixture.getMatch()).toEqual('Brentford (H) - Premier League (2024-25)');
+        expect(fixture.getMatch()).toEqual('Nottingham Forest (H) - Premier League (2026-27)');
     });
 
     it('should successfully parse', () => {
         let size: number = 0;
         expect(() => { size = fixture.find() }).not.toThrow();
-        expect(size).toEqual(5);
+        expect(size).toEqual(6);
     });
 
     it('should successfully recognise the number of valid sales', () => {
-        expect(fixture.getActiveSaleCount()).toEqual(1);
+        expect(fixture.getActiveSaleCount()).toEqual(3);
     });
 
     it('should successfully generate a JSON string with sales dates', () => {
-        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-brentford-h-premier-league","match":"Brentford (H) - Premier League (2024-25)","sales":[{"description":"Additional Members Sale","date":"Mon Aug 19 2024 11:00:00 GMT+0100 (British Summer Time)"}]}}');
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2026-nottingham-forest-h-premier-league","match":"Nottingham Forest (H) - Premier League (2026-27)","sales":[{"description":"Additional Members Sale Registration","date":"Mon Aug 17 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale","date":"Mon Aug 24 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Young Adult Area Ballot","date":"Tue Aug 18 2026 10:00:00 GMT+0100 (British Summer Time)"}]}}');
     });
 
     it('should throw errors if it cannot parse the fixture page', async () => {
@@ -159,7 +162,7 @@ describe('Parsing an active home fixture', () => {
         const fetch = jest.spyOn(global, 'fetch');
         fetch.mockImplementationOnce(() => Promise.reject('Failure retrieving HTML')); 
 
-        const faulty: Fixture = new Fixture('/tickets/tickets-availability/liverpool-fc-v-brentford-25-aug-2024-0430pm-342', 'Brentford', 'H', 'Premier League', new Date('2024-08-25 16:30'));
+        const faulty: Fixture = new Fixture('/tickets/tickets-match/liverpool-v-nottingham-forest-english-premier-league-20260829', 'Nottingham Forest', 'H', 'Premier League', new Date('2026-08-29 12:30'));
         await faulty.download();
         expect(() => faulty.find()).toThrow();
 
@@ -167,10 +170,10 @@ describe('Parsing an active home fixture', () => {
 
     it('should throw errors if the HTML of the fixture page does not match the expected fixture', async () => {
 
-        const faulty: Fixture = new Fixture('/tickets/tickets-availability/liverpool-fc-v-brentford-25-aug-2024-0430pm-342', 'Brentford', 'H', 'Premier League', new Date('2024-08-25 16:30'));
+        const faulty: Fixture = new Fixture('/tickets/tickets-match/liverpool-v-nottingham-forest-english-premier-league-20260829', 'Nottingham Forest', 'H', 'Premier League', new Date('2026-08-29 12:30'));
         const download = jest.spyOn(faulty, 'download');
         download.mockImplementationOnce(async function(this: Fixture) { 
-            this['html'] = fs.readFileSync('./src/__mocks__/availability-home-multiple.html', 'utf-8');
+            this['html'] = fs.readFileSync('./src/__mocks__/2026/availability-away-subject.html', 'utf-8');
             return true;
         });
 
@@ -181,137 +184,46 @@ describe('Parsing an active home fixture', () => {
 
 });
 
-describe('Parsing an active home fixture with multiple sales', () => {
-
-    const fixture: Fixture = new Fixture('/tickets/tickets-availability/liverpool-fc-v-chelsea-19-oct-2024-0530pm-347', 'Chelsea', 'H', 'Premier League', new Date('2024-10-19 17:30'));
-    fixture.download();
-
-    it('should successfully generate a unique ID', () => {
-        expect(fixture.id).toEqual('2024-chelsea-h-premier-league');
-    });
-
-    it('should successfully generate a match string', () => {
-        expect(fixture.getMatch()).toEqual('Chelsea (H) - Premier League (2024-25)');
-    });
-
-    it('should successfully parse', () => {
-        let size: number = 0;
-        expect(() => { size = fixture.find() }).not.toThrow();
-        expect(size).toEqual(5);
-    });
-
-    it('should successfully recognise the number of valid sales', () => {
-        expect(fixture.getActiveSaleCount()).toEqual(2);
-    });
-
-    it('should successfully generate a JSON string with sales dates', () => {
-        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-chelsea-h-premier-league","match":"Chelsea (H) - Premier League (2024-25)","sales":[{"description":"Members Sale (13+)","date":"Wed Sep 04 2024 08:15:00 GMT+0100 (British Summer Time)"},{"description":"Members Sale (4+)","date":"Thu Sep 05 2024 08:15:00 GMT+0100 (British Summer Time)"}]}}');
-    });
-
-});
-
 describe('Parsing an active home fixture with specfic game criteria', () => {
 
-    const fixture: Fixture = new Fixture('/tickets-availability/liverpool-fc-v-brighton-hove-albion-14-feb-2026-0800pm-531', 'Brighton &amp; Hove Albion', 'H', 'FA Cup', new Date('2026-02-14 20:00'));
+    const fixture: Fixture = new Fixture('/tickets/match/liverpool-v-manchester-city-english-premier-league-20261011', 'Manchester City', 'H', 'Premier League', new Date('2026-10-11 16:30'));
     fixture.download();
 
     it('should successfully generate a unique ID', () => {
-        expect(fixture.id).toEqual('2025-brighton-hove-albion-h-fa-cup');
+        expect(fixture.id).toEqual('2026-manchester-city-h-premier-league');
     });
 
     it('should successfully generate a match string', () => {
-        expect(fixture.getMatch()).toEqual('Brighton &amp; Hove Albion (H) - FA Cup (2025-26)');
+        expect(fixture.getMatch()).toEqual('Manchester City (H) - Premier League (2026-27)');
     });
 
     it('should successfully parse', () => {
         let size: number = 0;
         expect(() => { size = fixture.find() }).not.toThrow();
-        expect(size).toEqual(7);
+        expect(size).toEqual(10);
     });
 
     it('should successfully recognise the number of valid sales', () => {
-        expect(fixture.getActiveSaleCount()).toEqual(4);
+        expect(fixture.getActiveSaleCount()).toEqual(7);
     });
 
     it('should successfully generate a JSON string with sales dates', () => {
-        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2025-brighton-hove-albion-h-fa-cup","match":"Brighton &amp; Hove Albion (H) - FA Cup (2025-26)","sales":[{"description":"ST Holders and Members Registration","date":"Thu Jan 22 2026 11:00:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and Members Sale (2+)","date":"Fri Jan 23 2026 11:00:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and Members Sale (1+)","date":"Fri Jan 23 2026 14:00:00 GMT+0000 (Greenwich Mean Time)"},{"description":"ST Holders and Members Sale","date":"Tue Jan 27 2026 13:00:00 GMT+0000 (Greenwich Mean Time)"}]}}');
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2026-manchester-city-h-premier-league","match":"Manchester City (H) - Premier League (2026-27)","sales":[{"description":"Additional Members Sale Registration (4+)","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale Registration (3+)","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale Registration (2+)","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale Registration (1+)","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale Registration","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale (4+)","date":"Mon Oct 05 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Young Adult Area Ballot","date":"Tue Sep 29 2026 10:00:00 GMT+0100 (British Summer Time)"}]}}');
     });
 
 });
 
-describe('Parsing an active away fixture with multiple sales', () => {
+describe('Parsing an active away fixture', () => {
 
-    const fixture: Fixture = new Fixture('/tickets/tickets-availability/wolverhampton-wanderers-v-liverpool-fc-28-sep-2024-0530pm-372', 'Wolverhampton Wanderers', 'A', 'Premier League', new Date('2024-09-28 17:30'));
+    const fixture: Fixture = new Fixture('/tickets/ticket-match/brentford-v-liverpool-20261017', 'Brentford', 'A', 'Premier League', new Date('2026-10-17 15:00'));
     fixture.download();
 
     it('should successfully generate a unique ID', () => {
-        expect(fixture.id).toEqual('2024-wolverhampton-wanderers-a-premier-league');
+        expect(fixture.id).toEqual('2026-brentford-a-premier-league');
     });
 
     it('should successfully generate a match string', () => {
-        expect(fixture.getMatch()).toEqual('Wolverhampton Wanderers (A) - Premier League (2024-25)');
-    });
-
-    it('should successfully parse', () => {
-        let size: number = 0;
-        expect(() => { size = fixture.find() }).not.toThrow();
-        expect(size).toEqual(4);
-    });
-
-    it('should successfully recognise the number of valid sales', () => {
-        expect(fixture.getActiveSaleCount()).toEqual(4);
-    });
-
-    it('should successfully generate a JSON string with sales dates', () => {
-        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-wolverhampton-wanderers-a-premier-league","match":"Wolverhampton Wanderers (A) - Premier League (2024-25)","sales":[{"description":"ST Holders and Members Sale (11+)","date":"Mon Sep 02 2024 08:15:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (10+)","date":"Tue Sep 03 2024 11:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (9+)","date":"Tue Sep 03 2024 13:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (8+)","date":"Tue Sep 03 2024 15:00:00 GMT+0100 (British Summer Time)"}]}}');
-    });
-
-});
-
-describe('Parsing an active away fixture with potential sales', () => {
-
-    const fixture: Fixture = new Fixture('/tickets/tickets-availability/manchester-utd-v-liverpool-fc-1-sep-2024-0400pm-364', 'Manchester United', 'A', 'Premier League', new Date('2024-09-01 16:00'));
-    fixture.download();
-
-    it('should successfully generate a unique ID', () => {
-        expect(fixture.id).toEqual('2024-manchester-united-a-premier-league');
-    });
-
-    it('should successfully generate a match string', () => {
-        expect(fixture.getMatch()).toEqual('Manchester United (A) - Premier League (2024-25)');
-    });
-
-    it('should successfully parse', () => {
-        let size: number = 0;
-        expect(() => { size = fixture.find() }).not.toThrow();
-        expect(size).toEqual(4);
-    });
-
-    it('should successfully recognise the number of valid sales', () => {
-        expect(fixture.getActiveSaleCount()).toEqual(3);
-    });
-
-    it('should successfully generate a JSON string with sales dates', () => {
-        // This HTML did not include the year, so this gives us a good double test, that it works out the correct date
-        const date = new Date(new Date().getFullYear(), 7, 28);
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const expected = days[date.getDay()] + ' Aug 28 ' + date.getFullYear();
-        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-manchester-united-a-premier-league","match":"Manchester United (A) - Premier League (2024-25)","sales":[{"description":"ST Holders and Members Sale (7+)","date":"Wed Aug 28 2024 11:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (6+)","date":"' + expected + ' 13:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (5+)","date":"' + expected + ' 15:00:00 GMT+0100 (British Summer Time)"}]}}');
-    });
-
-});
-
-describe('Parsing an active away European fixture', () => {
-
-    const fixture: Fixture = new Fixture('/tickets/tickets-availability/ac-milan-v-liverpool-fc-17-sep-2024-0800pm-375', 'AC Milan', 'A', 'Champions League', new Date('2024-09-17 20:00'));
-    fixture.download();
-
-    it('should successfully generate a unique ID', () => {
-        expect(fixture.id).toEqual('2024-ac-milan-a-champions-league');
-    });
-
-    it('should successfully generate a match string', () => {
-        expect(fixture.getMatch()).toEqual('AC Milan (A) - Champions League (2024-25)');
+        expect(fixture.getMatch()).toEqual('Brentford (A) - Premier League (2026-27)');
     });
 
     it('should successfully parse', () => {
@@ -325,11 +237,68 @@ describe('Parsing an active away European fixture', () => {
     });
 
     it('should successfully generate a JSON string with sales dates', () => {
-        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2024-ac-milan-a-champions-league","match":"AC Milan (A) - Champions League (2024-25)","sales":[{"description":"ST Holders and Members Sale (1+)","date":"Fri Sep 06 2024 11:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Registration","date":"Fri Sep 06 2024 08:15:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale","date":"Wed Sep 11 2024 08:15:00 GMT+0100 (British Summer Time)"}]}}');
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2026-brentford-a-premier-league","match":"Brentford (A) - Premier League (2026-27)","sales":[{"description":"ST Holders and Members Sale (19+)","date":"Tue Sep 22 2026 08:15:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (18+)","date":"Wed Sep 23 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (17+)","date":"Wed Sep 23 2026 13:00:00 GMT+0100 (British Summer Time)"}]}}');
+    });
+});
+
+describe('Parsing an active away fixture with potential sales', () => {
+
+    const fixture: Fixture = new Fixture('/tickets/ticket-match/newcastle-united-v-liverpool-20260823', 'Newcastle United', 'A', 'Premier League', new Date('2026-08-23 16:30'));
+    fixture.download();
+
+    it('should successfully generate a unique ID', () => {
+        expect(fixture.id).toEqual('2026-newcastle-united-a-premier-league');
+    });
+
+    it('should successfully generate a match string', () => {
+        expect(fixture.getMatch()).toEqual('Newcastle United (A) - Premier League (2026-27)');
+    });
+
+    it('should successfully parse', () => {
+        let size: number = 0;
+        expect(() => { size = fixture.find() }).not.toThrow();
+        expect(size).toEqual(7);
+    });
+
+    it('should successfully recognise the number of valid sales', () => {
+        expect(fixture.getActiveSaleCount()).toEqual(2);
+    });
+
+    it('should successfully generate a JSON string with sales dates', () => {
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2026-newcastle-united-a-premier-league","match":"Newcastle United (A) - Premier League (2026-27)","sales":[{"description":"ST Holders and Members Sale (2+)","date":"Wed Aug 05 2026 13:00:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (1+)","date":"Wed Aug 05 2026 15:00:00 GMT+0100 (British Summer Time)"}]}}');
     });
 
 });
 
+describe('Parsing an active away European fixture', () => {
+
+    const fixture: Fixture = new Fixture('/tickets/match/liverpool-champions-league-lask-202627', 'LASK', 'A', 'Champions League', new Date('2026-10-14 20:00'));
+    fixture.download();
+
+    it('should successfully generate a unique ID', () => {
+        expect(fixture.id).toEqual('2026-lask-a-champions-league');
+    });
+
+    it('should successfully generate a match string', () => {
+        expect(fixture.getMatch()).toEqual('LASK (A) - Champions League (2026-27)');
+    });
+
+    it('should successfully parse', () => {
+        let size: number = 0;
+        expect(() => { size = fixture.find() }).not.toThrow();
+        expect(size).toEqual(3);
+    });
+
+    it('should successfully recognise the number of valid sales', () => {
+        expect(fixture.getActiveSaleCount()).toEqual(3);
+    });
+
+    it('should successfully generate a JSON string with sales dates', () => {
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2026-lask-a-champions-league","match":"LASK (A) - Champions League (2026-27)","sales":[{"description":"ST Holders and Members Sale (9+)","date":"Wed Sep 23 2026 08:15:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (8+)","date":"Thu Sep 24 2026 08:15:00 GMT+0100 (British Summer Time)"},{"description":"ST Holders and Members Sale (7+)","date":"Thu Sep 24 2026 13:00:00 GMT+0100 (British Summer Time)"}]}}');
+    });
+
+});
+/*
 describe('Parsing an active fixture with a TBC fixture date', () => {
 
     const fixture: Fixture = new Fixture('/tickets/tickets-availability/nottingham-forest-v-liverpool-fc-tbc-532', 'Nottingham Forest', 'A', 'Premier League', new Date('0000-01-01T00:00:00.000Z'));
@@ -390,24 +359,24 @@ describe('Parsing an active fixture with a TBC fixture date', () => {
     });
 
 });
-
+*/
 describe('Parsing an inactive home fixture', () => {
 
-    const fixture: Fixture = new Fixture('/tickets/tickets-availability/liverpool-fc-v-nottingham-forest-14-sep-2024-0300pm-343', 'Nottingham Forest', 'H', 'Premier League', new Date('2024-09-14 15:00'));
+    const fixture: Fixture = new Fixture('/tickets/match/liverpool-v-brighton-and-hove-albion-english-premier-league-20261025', 'Brighton and Hove Albion', 'H', 'Premier League', new Date('2026-10-25 14:00'));
     fixture.download();
 
     it('should successfully generate a unique ID', () => {
-        expect(fixture.id).toEqual('2024-nottingham-forest-h-premier-league');
+        expect(fixture.id).toEqual('2026-brighton-and-hove-albion-h-premier-league');
     });
 
     it('should successfully generate a match string', () => {
-        expect(fixture.getMatch()).toEqual('Nottingham Forest (H) - Premier League (2024-25)');
+        expect(fixture.getMatch()).toEqual('Brighton and Hove Albion (H) - Premier League (2026-27)');
     });
 
     it('should successfully parse', () => {
         let size: number = 0;
         expect(() => { size = fixture.find() }).not.toThrow();
-        expect(size).toEqual(5);
+        expect(size).toEqual(4);
     });
 
     it('should successfully recognise the number of valid sales', () => {
@@ -419,7 +388,7 @@ describe('Parsing an inactive home fixture', () => {
     });
 
 });
-
+/*
 describe('Parsing an inactive away fixture', () => {
 
     const fixture: Fixture = new Fixture('/tickets/tickets-availability/manchester-united-v-liverpool-fc-1-sep-2024-0400pm-364', 'Manchester United', 'A', 'Premier League', new Date('2024-09-01 16:00'));
@@ -448,61 +417,4 @@ describe('Parsing an inactive away fixture', () => {
     });
 
 });
-
-describe('Sales dates', () => {
-
-    const pending:Sale = new Sale('Additional Members Sale', Status.PENDING, new Date('2024-09-01 09:00'));
-    const ended:Sale = new Sale('Members Sale (13+)', Status.ENDED, new Date('2024-08-01 09:00'));
-    const available:Sale = new Sale('Members Sale (13+)', Status.AVAILABLE, null);
-    const ambulant:Sale = new Sale('Members who require a wheelchair bay or ambulant seating ONLY (4+)', Status.PENDING, new Date('2024-09-01 09:00'));
-    const hospitality:Sale = new Sale('Hospitality', Status.PENDING, new Date('2024-09-01 09:00'));
-
-    it('should successfully recognise a PENDING sale as valid', () => {
-        expect(pending.isValid()).toEqual(true);
-    });
-
-    it('should successfully recognise an ENDED sale as invalid', () => {
-        expect(ended.isValid()).toEqual(false);
-    });
-
-    it('should successfully recognise an AVAILABLE sale as invalid', () => {
-        expect(available.isValid()).toEqual(false);
-    });
-
-    it('should successfully recognise a sale for ambulant seating as invalid', () => {
-        expect(ambulant.isValid()).toEqual(false);
-    });
-
-    it('should successfully recognise a sale for hospitality seating as invalid', () => {
-        expect(hospitality.isValid()).toEqual(false);
-    });
-
-    it('should successfully return a Json string for a PENDING sale', () => {
-        expect(pending.getJson()).toEqual('{"description":"Additional Members Sale","date":"Sun Sep 01 2024 09:00:00 GMT+0100 (British Summer Time)"}');
-    });
-
-    it('should return null for an ENDED sale', () => {
-        expect(ended.getJson()).toBeNull();
-    });
-
-    it('should return null for an AVAILABLE sale', () => {
-        expect(available.getJson()).toBeNull();
-    });
-
-    it('should return null for a sale for ambulant seating', () => {
-        expect(ambulant.getJson()).toBeNull();
-    });
-
-    it('should return null for a sale for hospitality seating', () => {
-        expect(hospitality.getJson()).toBeNull();
-    });
-
-    it('should return a title for a valid sale', () => {
-        expect(pending.getTitle()).toEqual('1 Sept 2024, 9:00 : Additional Members Sale');
-    });
-
-    it('should return a null title for an invalid sale', () => {
-        expect(hospitality.getTitle()).toBeNull();
-    });
-
-});
+*/

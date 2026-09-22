@@ -25,7 +25,7 @@ import { Narrator } from '@redpenguinstudio/herbert';
 
 import { Constants } from '../src/constants';
 
-import pkg from '../package.json' assert { type: 'json' };
+import pkg from '../package.json';
 
 dotenv.config({ debug: false, quiet: true });
 

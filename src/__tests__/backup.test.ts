@@ -27,11 +27,11 @@ describe('Backing up and restoring ICS data', () => {
 
     beforeEach(() => {
         const bulk: Array<ICS.EventAttributes> = [];
-        Mocks.events.bulk.sales.forEach((e) => {
+        Mocks.events[2024].bulk.sales.forEach((e) => {
             bulk.push(e);
         });
         const ams: Array<ICS.EventAttributes> = [];
-        Mocks.events.ams.sales.forEach((e) => {
+        Mocks.events[2024].ams.sales.forEach((e) => {
             ams.push(e);
         });
         events = [bulk, ams];
@@ -135,8 +135,8 @@ describe('Backing up and restoring ICS data', () => {
         backup1.merge(backup2);
 
         expect(backup1.getEvents().length).toBe(9);
-        expect(backup1.getEvents().at(0)).toEqual(Mocks.events.bulk.sales.at(0));
-        expect(backup1.getEvents().at(7)).toEqual(Mocks.events.ams.sales.at(0));
+        expect(backup1.getEvents().at(0)).toEqual(Mocks.events[2024].bulk.sales.at(0));
+        expect(backup1.getEvents().at(7)).toEqual(Mocks.events[2024].ams.sales.at(0));
         
     });
 

@@ -3,6 +3,8 @@ import { EventAttributes } from 'ics';
 
 import { Narrator } from '@redpenguinstudio/herbert';
 
+import { GetFormat } from '../constants';
+
 import Sale from "./sale";
 
 /**
@@ -10,6 +12,9 @@ import Sale from "./sale";
  * and functions to retrieve this data and parse it.
  */
 export default class Fixture {
+
+    /** The HTML format to be used to parse the fixture */
+    private format: number = GetFormat();
 
     /** A unique identifier for each fixture (generated internally at construction), used to detect changes. */
     readonly id: string;
@@ -98,82 +103,154 @@ export default class Fixture {
         if ( this.html == null || this.html == '' ) {
             throw new Error('HTML for "' + this.getMatch() + '" is empty');
         }
-        // First off, a quick sanity check we've got the right fixture
-        const pattern: RegExp = new RegExp('<title>' + (this.venue == 'A' ? this.opposition.replace('&amp; ', '') + ' V Liverpool Fc' : 'Liverpool Fc V ' + this.opposition.replace('&amp; ', '')) + '.*?</title>', 'i'); 
-        const title: Nullable<RegExpMatchArray> = this.html.match(pattern);
-        if ( title == null ) {
-            throw new Error('Parsing the wrong fixture - expecting "' + this.opposition + '"');
-        }
-            
-        // Now, find each element representing a sale date, registration date, etc.
-        const re: RegExp = /<h3>.*?<span class="salename">(.+?)<\/span>.*?(?:<span class="prereqs">(.*?)<\/span>).*?<span class="status">(.+?)<\/span>\s*?(?:(?:<span class="whenavailable">(.+?)(\d{1,2}):(\d{2})([ap]m)<\/span>).*?)?<\/h3>.*?(?:(?:(?:Buy|Registration).*?from (\d{1,2})(?:[:.](\d{2}))?([ap]m).*?([A-Z].*?)\.<).*?)?<\/li>/gs;
-        let match : Nullable<RegExpExecArray>;
-        while ( (match = re.exec(this.html)) !== null ) {
+        switch (this.format) {
+            case 2024: {
 
-            // Any tier one fixtures or away games will have pre-requisites (how many credits recorded) for the sale.
-            // Make sure to capture this and include in the description to make the information useful.
-            // Of course, just to be awkward, some times they use numbers, some times they use the words!
-            let credits: number = 0;
-            const prereqs: Nullable<RegExpMatchArray> = match[2].match(/who .*?recorded (all )*(.+?)((\+)|( or more)|( of)|( (.*?)games)|(.+? \(\d{1,}\.\d{1,}\.\d{1,}\),*){1,})/i);
-            if ( prereqs != null ) {
-                if ( !prereqs[2].match(/^\d+$/) ) {
-                    // Max credits we can ever need must surely be 19 (every home or away game in a league season)
-                    const words: Array<string> = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
-                    for ( let w = 0; w < 19; w++ ) {
-                        prereqs[2] = prereqs[2].replace(words[w], String(w+1));
+                // First off, a quick sanity check we've got the right fixture
+                const pattern: RegExp = new RegExp('<title>' + (this.venue == 'A' ? this.opposition.replace('&amp; ', '') + ' V Liverpool Fc' : 'Liverpool Fc V ' + this.opposition.replace('&amp; ', '')) + '.*?</title>', 'i'); 
+                const title: Nullable<RegExpMatchArray> = this.html.match(pattern);
+                if ( title == null ) {
+                    throw new Error('Parsing the wrong fixture - expecting "' + this.opposition + '"');
+                }
+                    
+                // Now, find each element representing a sale date, registration date, etc.
+                const re: RegExp = /<h3>.*?<span class="salename">(.+?)<\/span>.*?(?:<span class="prereqs">(.*?)<\/span>).*?<span class="status">(.+?)<\/span>\s*?(?:(?:<span class="whenavailable">(.+?)(\d{1,2}):(\d{2})([ap]m)<\/span>).*?)?<\/h3>.*?(?:(?:(?:Buy|Registration).*?from (\d{1,2})(?:[:.](\d{2}))?([ap]m).*?([A-Z].*?)\.<).*?)?<\/li>/gs;
+                let match : Nullable<RegExpExecArray>;
+                while ( (match = re.exec(this.html)) !== null ) {
+
+                    // Any tier one fixtures or away games will have pre-requisites (how many credits recorded) for the sale.
+                    // Make sure to capture this and include in the description to make the information useful.
+                    // Of course, just to be awkward, some times they use numbers, some times they use the words!
+                    let credits: number = 0;
+                    const prereqs: Nullable<RegExpMatchArray> = match[2].match(/who .*?recorded (all )*(.+?)((\+)|( or more)|( of)|( (.*?)games)|(.+? \(\d{1,}\.\d{1,}\.\d{1,}\),*){1,})/i);
+                    if ( prereqs != null ) {
+                        if ( !prereqs[2].match(/^\d+$/) ) {
+                            // Max credits we can ever need must surely be 19 (every home or away game in a league season)
+                            const words: Array<string> = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+                            for ( let w = 0; w < 19; w++ ) {
+                                prereqs[2] = prereqs[2].replace(words[w], String(w+1));
+                            }
+                            // It may just be a list of games, in which case we need to do a manual count
+                            if ( !prereqs[2].match(/^d+$/) ) {
+                                prereqs[2] = ((prereqs[3].match(/,/g)||[]).length + 1).toString();
+                            }
+                        }
+                        credits = parseInt(prereqs[2]);
                     }
-                    // It may just be a list of games, in which case we need to do a manual count
-                    if ( !prereqs[2].match(/^d+$/) ) {
-                        prereqs[2] = ((prereqs[3].match(/,/g)||[]).length + 1).toString();
+
+                    const description: string = match[1]
+                        .replace(/SEASON TICKET HOLDERS/i, 'ST Holders')
+                        .replace(/OFFICIAL MEMBERS/i, 'Members')
+                        .replace(/ALL RED MEMBERS \(FULL, LIGHT OR JUNIOR\)/i, 'Members')
+                        .replace(/ALL RED MEMBERS/i, 'Members')
+                        .replace(/REGISTRATION/i, 'Registration')
+                        .replace(/AND/i, 'and')
+                        .replace(/&amp;/, 'and')
+                        .replace(/(\s+\d+)\s+?(\+\s+?)/, '$1$2') + 
+                        ((!match[1].toLowerCase().endsWith('sale') && !match[1].toLowerCase().endsWith('registration')) ? ' Sale' : '') + 
+                        (credits > 0 ? ' (' + credits + '+)' : '');
+                    const status: Status = (
+                        (match[3].toLowerCase().indexOf('ended') > -1 || match[3].toLowerCase().indexOf('sold out') > -1) ? Status.ENDED : (
+                        (match[3].toLowerCase().indexOf('available') > -1 || match[3].toLowerCase().indexOf('buy now') > -1) ? Status.AVAILABLE : 
+                        Status.PENDING
+                    ));
+                    // We're not interested in Priority Rights holders
+                    if ( description.toLowerCase().includes('priority right') ) {
+                        continue;
+                    }
+
+                    // As with the fixture date, the sale date/time is formatted in such a way that Javascript will throw "Invalid Date" 
+                    // if you try and convert directly, so a bit of interpretation is required
+                    let date: Nullable<Date> = null;
+                    if ( match[4] ) {
+                        date = new Date(match[4]);
+                        const hours: number = parseInt(match[5]) + (match[7] == 'pm' ? 12: 0), minutes: number = parseInt(match[6]);
+                        date.setHours(hours);
+                        date.setMinutes(minutes);
+                    } else if ( match[8] ) {
+                        let day = match[11];
+                        if ( day.includes('until') ) {
+                            day = day.substring(0, day.indexOf(' until'));
+                        }
+                        date = new Date(day + (/\s\d{4}$/.test(day) ? '' : ' ' + new Date().getFullYear()));
+                        const hours: number = parseInt(match[8]) + (match[10] == 'pm' ? 12: 0), minutes: number = (match[6] ? parseInt(match[6]) : 0);
+                        date.setHours(hours);
+                        date.setMinutes(minutes);
+                    }
+
+                    const sale: Sale = new Sale(description, status, date);
+                    this.sales.push(sale);
+
+                }
+                break;
+
+            }
+            case 2026: {
+                                
+                // First off, a quick sanity check we've got the right fixture
+                const pattern: RegExp = new RegExp('<h2.*?data-testid="hospitality-fixture-header__team-' + (this.venue == 'A' ? 'home' : 'away') + '">' + this.opposition.replace('&amp; ', '') + '</h2>', 'i'); 
+                const title: Nullable<RegExpMatchArray> = this.html.match(pattern);
+                if ( title == null ) {
+                    throw new Error('Parsing the wrong fixture - expecting "' + this.opposition + '"');
+                }
+                    
+                // Now, find each element representing a sale date, registration date, etc.
+                // const ore: RegExp = /<section.*?data-testid="ticketing-accordion-list-item">.*?<span.*?data-testid="ticketing-status-indicator__label">(.+?)<\/span>(?:.*?<time.*?dateTime="(.*?)".*?>.*?<\/time>)?.*?<span.*?data-testid="ticketing-accordion-list-item__title\">(.+?)<\/span>(?:.*?<span.*?data-testid="ticketing-accordion-list-item__assistive-text">.*?Credit Balance of (\d+?)\D*?<\/span>)?.*?<article.*?>.*?(?:[from|opens] (\d+?)(?:[:\.](\d+?))?([ap]m).*? (\d{1,2} \w+?)\W.*?)?<\/article>.*?<\/section>/gs;
+                const outer: RegExp = /<section.*?data-testid="ticketing-accordion-list-item">(.*?)<\/section>/gs;
+                let section: Nullable<RegExpExecArray>;
+                while ( (section = outer.exec(this.html)) !== null ) {
+                    const inner: RegExp = /<span.*?data-testid="ticketing-status-indicator__label">(.+?)<\/span>(?:.*?<time.*?dateTime="(.*?)".*?>.*?<\/time>)?.*?<span.*?data-testid="ticketing-accordion-list-item__title">(.+?)<\/span>(?:.*?<span.*?data-testid="ticketing-accordion-list-item__assistive-text">.*?Credit Balance of (\d+?)\D*?<\/span>)?.*?<article.*?>.*?(?:[from|opens] (\d+?)(?:[:.](\d+?))?([ap]m).*? (\d{1,2} \w+?)\W.*?)?<\/article>/gs;
+                    let match: Nullable<RegExpExecArray>;
+                    while ( (match = inner.exec(section[1])) !== null ) {
+                        let credits: number = 0;
+                        if (match[4] != null) {
+                            credits = parseInt(match[4]);
+                        }
+
+                        const description: string = match[3]
+                            .replace(/SEASON TICKET HOLDERS/i, 'ST Holders')
+                            .replace(/OFFICIAL MEMBERS/i, 'Members')
+                            .replace(/ALL RED MEMBERS \(FULL, LIGHT OR JUNIOR\)/i, 'Members')
+                            .replace(/ALL RED MEMBERS/i, 'Members')
+                            .replace(/REGISTRATION/i, 'Registration')
+                            .replace(/AND/i, 'and')
+                            .replace(/&amp;/, 'and')
+                            .replace(/(\s+\d+)\s+?(\+\s+?)/, '$1$2') + 
+                            ((!match[3].toLowerCase().endsWith('sale') && !match[3].toLowerCase().endsWith('registration') && !match[3].toLowerCase().endsWith('ballot')) ? ' Sale' : '') + 
+                            (credits > 0 ? ' (' + credits + '+)' : '');
+                        const status: Status = (
+                            (match[1].toLowerCase().indexOf('ended') > -1 || match[1].toLowerCase().indexOf('sold out') > -1) ? Status.ENDED : (
+                            (match[1].toLowerCase().indexOf('available') > -1 || match[1].toLowerCase().indexOf('buy now') > -1) ? Status.AVAILABLE : 
+                            Status.PENDING
+                        ));
+                        // We're not interested in Priority Rights holders or Wheelchair Bays
+                        if ( description.toLowerCase().includes('priority right') || description.toLowerCase().includes('wheelchair bay') ) {
+                            continue;
+                        }
+
+                        // As with the fixture date, the sale date/time is formatted in such a way that Javascript will throw "Invalid Date" 
+                        // if you try and convert directly, so a bit of interpretation is required
+                        let date: Nullable<Date> = null;
+
+                        if (match[2]) {
+                            date = new Date(match[2]);
+                        } else {
+                            const day = match[8];
+                            date = new Date(day + new Date().getFullYear());
+                            const hours: number = parseInt(match[5]) + (match[7] == 'pm' ? 12: 0), minutes: number = (match[6] ? parseInt(match[6]) : 0);
+                            date.setHours(hours);
+                            date.setMinutes(minutes);
+                        }
+
+                        const sale: Sale = new Sale(description, status, date);
+                        this.sales.push(sale);
                     }
                 }
-                credits = parseInt(prereqs[2]);
+                break;
+
             }
-
-            const description: string = match[1]
-                .replace(/SEASON TICKET HOLDERS/i, 'ST Holders')
-                .replace(/OFFICIAL MEMBERS/i, 'Members')
-                .replace(/ALL RED MEMBERS \(FULL, LIGHT OR JUNIOR\)/i, 'Members')
-                .replace(/ALL RED MEMBERS/i, 'Members')
-                .replace(/REGISTRATION/i, 'Registration')
-                .replace(/AND/i, 'and')
-                .replace(/&amp;/, 'and')
-                .replace(/(\s+\d+)\s+?(\+\s+?)/, '$1$2') + 
-                ((!match[1].toLowerCase().endsWith('sale') && !match[1].toLowerCase().endsWith('registration')) ? ' Sale' : '') + 
-                (credits > 0 ? ' (' + credits + '+)' : '');
-            const status: Status = (
-                (match[3].toLowerCase().indexOf('ended') > -1 || match[3].toLowerCase().indexOf('sold out') > -1) ? Status.ENDED : (
-                (match[3].toLowerCase().indexOf('available') > -1 || match[3].toLowerCase().indexOf('buy now') > -1) ? Status.AVAILABLE : 
-                Status.PENDING
-            ));
-            // We're not interested in Priority Rights holders
-            if ( description.toLowerCase().includes('priority right') ) {
-                continue;
-            }
-
-            // As with the fixture date, the sale date/time is formatted in such a way that Javascript will throw "Invalid Date" 
-            // if you try and convert directly, so a bit of interpretation is required
-            let date: Nullable<Date> = null;
-            if ( match[4] ) {
-                date = new Date(match[4]);
-                const hours: number = parseInt(match[5]) + (match[7] == 'pm' ? 12: 0), minutes: number = parseInt(match[6]);
-                date.setHours(hours);
-                date.setMinutes(minutes);
-            } else if ( match[8] ) {
-                let day = match[11];
-                if ( day.includes('until') ) {
-                    day = day.substring(0, day.indexOf(' until'));
-                }
-                date = new Date(day + (/\s\d{4}$/.test(day) ? '' : ' ' + new Date().getFullYear()));
-                const hours: number = parseInt(match[8]) + (match[10] == 'pm' ? 12: 0), minutes: number = (match[6] ? parseInt(match[6]) : 0);
-                date.setHours(hours);
-                date.setMinutes(minutes);
-            }
-
-            const sale: Sale = new Sale(description, status, date);
-            this.sales.push(sale);
-
         }
+        Narrator.success('"' + this.opposition + '(' + this.venue + ') - ' + this.competition + '" successfully parsed');
         return this.sales.length;
 
     }

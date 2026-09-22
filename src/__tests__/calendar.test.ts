@@ -4,6 +4,7 @@ import * as ICS from 'ics';
 import * as nodemailer from 'nodemailer';
 import { NodemailerMock } from 'nodemailer-mock';
 
+import { GetFormat } from '../constants';
 import { FixtureList, Sale } from "../fixtures";
 import { Email } from '../distribution';
 import { Backup } from '../persistence';
@@ -11,8 +12,36 @@ import setup, { Mocks } from "../setupTests";
 
 setup();
 
+describe('Setting the HTML format environment variable', () => {
+
+    let format: number = 0;
+    jest.replaceProperty(process.env, 'HTML_FORMAT', undefined);
+    expect(() => { format = GetFormat() }).not.toThrow();
+    expect(format).toEqual(2026);
+
+    jest.replaceProperty(process.env, 'HTML_FORMAT', '2024');
+    expect(() => { format = GetFormat() }).not.toThrow();
+    expect(format).toEqual(2024);
+
+    jest.replaceProperty(process.env, 'HTML_FORMAT', '2025');
+    expect(() => { format = GetFormat() }).not.toThrow();
+    expect(format).toEqual(2024);
+
+    jest.replaceProperty(process.env, 'HTML_FORMAT', '2027');
+    expect(() => { format = GetFormat() }).not.toThrow();
+    expect(format).toEqual(2026);
+
+    format = 0;
+    jest.replaceProperty(process.env, 'HTML_FORMAT', 'Not remotely a number');
+    expect(() => { format = GetFormat() }).not.toThrow();
+    expect(format).toEqual(2026);
+
+});
+
 describe('Converting the fixture list and sending the calendar email', () => {
 
+    jest.replaceProperty(process.env, 'HTML_FORMAT', '2024');
+    
     const { mock } = nodemailer as unknown as NodemailerMock;
 
     const index: FixtureList = new FixtureList();
@@ -49,7 +78,7 @@ describe('Converting the fixture list and sending the calendar email', () => {
 
     it('should successfully merge sales on the same date into a "bulk" sale', async () => {
         const email: Email = new Email();
-        email.construct(Mocks.events.bulk.sales);
+        email.construct(Mocks.events[2024].bulk.sales);
         expect(email['ics']!.value!.includes('Chelsea (H) : Members Sale')).toBe(false);
         expect(email['ics']!.value!.includes('Brighton and Hove Albion (H) : Members Sale')).toBe(false);
         expect(email['ics']!.value!.includes('Aston Villa (H) : Members Sale')).toBe(false);
@@ -59,15 +88,15 @@ describe('Converting the fixture list and sending the calendar email', () => {
 
     it('should successfully merge registrations on the same date into a "bulk" registration', async () => {
         const email: Email = new Email();
-        email.construct(Mocks.events.bulk.registration);
+        email.construct(Mocks.events[2024].bulk.registration);
         expect(email['ics']!.value!.includes('Chelsea (H) : Members Ticket Sale Registration')).toBe(false);
         expect(email['ics']!.value!.includes('Brighton and Hove Albion (H) : Members Ticket Sale Registration')).toBe(false);
         expect(email['ics']!.value!.includes('Aston Villa (H) : Members Ticket Sale Registration')).toBe(false);
         expect(email['ics']!.value!.match(/Registration \(Chelsea\\, Brighton and Hove Albion\\, Aston Villa\) : M\s*embers Ticket Sale \(13\+\\, 4\+\\, General\)/gis)).not.toBeNull();
         // Re-test with a different order so as to test every eventuality
         const events: Array<ICS.EventAttributes> = [];
-        events.push(Mocks.events.bulk.registration[2]);
-        events.push(Mocks.events.bulk.registration[4]);
+        events.push(Mocks.events[2024].bulk.registration[2]);
+        events.push(Mocks.events[2024].bulk.registration[4]);
         email.construct (events);
         expect(email['ics']!.value!.includes('Brighton and Hove Albion (H) : Members Ticket Sale Registration')).toBe(false);
         expect(email['ics']!.value!.includes('Aston Villa (H) : Members Ticket Sale Registration')).toBe(false);
@@ -76,7 +105,7 @@ describe('Converting the fixture list and sending the calendar email', () => {
 
     it('should successfully merge additional registrations on the same date into one registration', async () => {
         const email: Email = new Email();
-        email.construct(Mocks.events.ams.registration);
+        email.construct(Mocks.events[2024].ams.registration);
         expect(email['ics']!.value!.includes('Manchester City (H) : Additional Members 4+ Sale Registration')).toBe(false);
         expect(email['ics']!.value!.includes('Manchester City (H) : Additional Members 3+ Sale Registration')).toBe(false);
         expect(email['ics']!.value!.includes('Manchester City (H) : Additional Members 2+ Sale Registration')).toBe(false);
@@ -85,7 +114,7 @@ describe('Converting the fixture list and sending the calendar email', () => {
 
     it('should ignore any sales dates in the past', async () => {
         const email: Email = new Email();
-        const backup: Backup = new Backup(new Date(), Mocks.events.expired);
+        const backup: Backup = new Backup(new Date(), Mocks.events[2024].expired);
         email.construct(backup.getEvents());
         const re: RegExp = /BEGIN:VEVENT/;
         const matches: Nullable<RegExpExecArray> = re.exec(email['ics']!.value!);
@@ -95,16 +124,16 @@ describe('Converting the fixture list and sending the calendar email', () => {
     it('should successfully merge absolute duplicates', async () => {
         const email: Email = new Email();
         const events: Array<ICS.EventAttributes> = [];
-        Mocks.events.away.forEach((e) => {
+        Mocks.events[2024].away.forEach((e) => {
             events.push(e);
         });
-        events.push(Mocks.events.away[1]);
+        events.push(Mocks.events[2024].away[1]);
         const backup: Backup = new Backup(new Date(), events);
         email.construct(backup.getEvents());
         const re: RegExp = /BEGIN:VEVENT/g;
         const matches: Nullable<RegExpMatchArray> = email['ics']!.value!.match(re);
         expect(matches).not.toBeNull();
-        expect(matches!.length).toBe(Mocks.events.away.length);
+        expect(matches!.length).toBe(Mocks.events[2024].away.length);
     });
 
     it('should throw errors if it cannot produce the calendar file', async () => {
@@ -123,8 +152,8 @@ describe('Converting the fixture list and sending the calendar email', () => {
         const months: Array<string> = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const date: string = new Date().getDate() + '/' + month + '/' + year;
         const email: Email = new Email();
-        email.construct(Mocks.events.bulk.sales);
-        await expect(email.sendEvents(Mocks.fixtures)).resolves.toBe(true);
+        email.construct(Mocks.events[2024].bulk.sales);
+        await expect(email.sendEvents(Mocks.fixtures[2024])).resolves.toBe(true);
         const mails = mock.getSentMail();
         expect(mails).not.toBeNull();
         expect(mails.length).toBe(1);
@@ -179,7 +208,7 @@ describe('Converting the fixture list and sending the calendar email', () => {
 
     it('should successfully handle errors in the email sending process and return false', async () => {
         const email: Email = new Email();
-        email.construct(Mocks.events.bulk.sales);
+        email.construct(Mocks.events[2024].bulk.sales);
 
         mock.setSuccessResponse('200 OK');
         await expect(email.sendEvents()).resolves.toBe(false);
@@ -197,7 +226,7 @@ describe('Converting the fixture list and sending the calendar email', () => {
         delete process.env.EMAIL_HOST;
 
         const email: Email = new Email();
-        email.construct(Mocks.events.bulk.sales);
+        email.construct(Mocks.events[2024].bulk.sales);
         await expect(email.sendEvents()).resolves.toBe(false);
         const mails = mock.getSentMail();
         expect(mails.length).toBe(0);
