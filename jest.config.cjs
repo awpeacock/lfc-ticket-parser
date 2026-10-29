@@ -7,4 +7,5 @@ module.exports = {
   testPathIgnorePatterns: ['<rootDir>/dist/'],
   collectCoverage: true,
   coveragePathIgnorePatterns: ['/setupTests\\.(ts|js)$'],
+  silent: true,
 };

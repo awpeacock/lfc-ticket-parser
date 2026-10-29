@@ -252,9 +252,6 @@ export const Mocks = {
         2026: fixtures[2026]
     }
 };
-Mocks.console.log.mockImplementation(() => null);
-Mocks.console.error.mockImplementation(() => null);
-Mocks.console.debug.mockImplementation(() => null);
 
 export default function() {
 
@@ -292,40 +289,57 @@ export default function() {
         let html: string = '';
         if ( url.endsWith('tickets-availability') || url.endsWith('tickets?category=mens') ) {
             html = files[year].index;
-        } else if ( url.includes('brentford') ) {
-            html = (year == 2024) ? files[2024].home : files[2026].away;
-        } else if ( url.includes('chelsea') ) {
-            html = files[2024].multiple;
-        } else if ( url.includes('brighton') && url.includes('2024') ) {
-            html = files[2024].bulk1;
-        } else if ( url.includes('aston-villa') ) {
-            html = files[2024].bulk2;
-        } else if ( url.includes('manchester-city') ) {
-            html = files[year].credits;
-        } else if ( url.includes('brighton') && url.includes('2026') ) {
-            if ( url.includes('premier-league') ) {
-                html = files[2026].inactive;
-            } else {
-                html = files[2024].cup;
+        } else {
+            switch (year) {
+                case 2024:
+                {
+                    if ( url.includes('brentford') ) {
+                        html = files[2024].home;
+                    } else if ( url.includes('chelsea') ) {
+                        html = files[2024].multiple;
+                    } else if ( url.includes('brighton') && url.includes('2024') ) {
+                        html = files[2024].bulk1;
+                    } else if ( url.includes('aston-villa') ) {
+                        html = files[2024].bulk2;
+                    } else if ( url.includes('manchester-city') ) {
+                        html = files[2024].credits;
+                    } else if ( url.includes('brighton') && url.includes('2026') ) {
+                        html = files[2024].cup;
+                    } else if ( url.includes('wolverhampton-wanderers') ) {
+                        html = files[2024].away;
+                    } else if ( url.includes('manchester-utd') ) {
+                        html = files[2024].subject;
+                    } else if ( url.includes('ac-milan') ) {
+                        html = files[2024].euro;
+                    } else if ( url.includes('west-ham') ) {
+                        html = files[2024].image
+                    } else if ( url.includes('-v-nottingham-forest') ) {
+                        html = files[2024].inactive;
+                    } else if ( url.includes('manchester-united') ) {
+                        html = files[2024].sold;
+                    } else if ( url.includes('nottingham-forest-v-') ) {
+                        html = files[2024].tbc;
+                    }
+                    break;
+                }
+                case 2026:
+                {
+                    if ( url.includes('brentford') ) {
+                        html = files[2026].away;
+                    } else if ( url.includes('manchester-city') ) {
+                        html = files[2026].credits;
+                    } else if ( url.includes('brighton') ) {
+                        html = files[2026].inactive;
+                    } else if ( url.includes('nottingham-forest') ) {
+                        html = files[2026].home;
+                    } else if ( url.includes('newcastle') ) {
+                        html = files[2026].subject;
+                    } else if ( url.includes('lask') ) {
+                        html = files[2026].euro;
+                    }
+                    break;
+                }
             }
-        } else if ( url.includes('wolverhampton-wanderers') ) {
-            html = files[2024].away;
-        } else if ( url.includes('manchester-utd') ) {
-            html = files[2024].subject;
-        } else if ( url.includes('ac-milan') ) {
-            html = files[2024].euro;
-        } else if ( url.includes('west-ham') ) {
-            html = files[2024].image
-        } else if ( url.includes('-v-nottingham-forest') ) {
-            html = (year == 2024) ? files[2024].inactive : files[2026].home;
-        } else if ( url.includes('manchester-united') ) {
-            html = files[2024].sold;
-        } else if ( url.includes('nottingham-forest-v-') ) {
-            html = files[2024].tbc;
-        } else if ( url.includes('newcastle') ) {
-            html = files[2026].subject;
-        } else if ( url.includes('lask') ) {
-            html = files[2026].euro;
         }
         return Promise.resolve({
             text: () => Promise.resolve(html)

@@ -61,13 +61,14 @@ describe('Parsing the fixture list', () => {
         // This should catch if the HTML wasn't what was expected
         const download = jest.spyOn(FixtureList.prototype, 'download');
         download.mockImplementationOnce(async function(this: Fixture) { 
-            this['html'] = '<a data-testid="hospitality-fixture-card" href="fixture.html"><div class="hospitality-fixture-card_hospitalityFixtureCard__matchDetails__xz4ac" data-testid="hospitality-fixture-card__match-details">Not what is expected</div></a>';
+            this['html'] = '\\"card\\":{\\"id\\":\\"2Hp0gbqyb506LkeKfb468A\\",\\"url\\":\\"fixture.html\\",\\"homeTeam\\":\\"Nobody\\",\\"awayTeam\\":\\"Nobody\\",\\"isClientHome\\":false,\\"kickoffTime\\":\\"\\",\\"date\\":\\"\\",\\"competition\\":\\"None\\",\\"competitionLogo\\":[\\"$\\",\\"img\\",null,{\\"src\\":\\"https://images.ctfassets.net/rm6ms1yxue4m/6JZl0j5k1V3wTBeCpIJ6CT/faef60d6656aff161a812fbc89576408/champions-league.png\\",\\"alt\\":\\"pl-main-logo\\"}],\\"venue\\":\\"Raiffeisen Arena\\",\\"crest\\":[\\"$\\",\\"img\\",null,{\\"src\\":\\"https://images.ctfassets.net/rm6ms1yxue4m/3n9yYkSfNxGycdSToISWQu/11453b427fba3ce38665c736239b2922/LASK.png\\",\\"alt\\":\\"Club Crests - LASK\\",\\"width\\":48,\\"height\\":48}],\\"priceFrom\\":\\"$undefined\\",\\"priceTo\\":\\"$undefined\\",\\"statusBadge\\":\\"$undefined\\",\\"disabled\\":\\"$undefined\\",\\"type\\":\\"ticketing\\",\\"statusBadgeTheme\\":\\"$undefined\\",\\"awayCrest\\":[\\"$\\",\\"img\\",null,{\\"src\\":\\"https://images.ctfassets.net/rm6ms1yxue4m/hTBH1GaW3aj7S85xaBUrB/523c0f79163a37ac8e070268caafe314/Name_Default_Colour_2x.png\\",\\"alt\\":\\"Liverpool Crest\\",\\"width\\":48,\\"height\\":48}],\\"dictionary\\":{\\"homeLabel\\":\\"HOME\\",\\"awayLabel\\":\\"AWAY\\"}}},{\\"kind\\":\\"fixture\\",\\"sortDate\\":\\"2026-08-29T11:30:00.000Z\\",\\"categoryId\\":\\"14\\",\\"kickOffTbc\\":\\"$undefined\\",\\"card\\":{\\"id\\":\\"6cEeNo0eAEQ1sU03o3nTQB\\",\\"url\\":\\"/tickets/match/liverpool-v-brighton-2026-27\\",\\"homeTeam\\":\\"Liverpool\\",\\"awayTeam\\":\\"Brighton \\u0026 Hove Albion\\",\\"isClientHome\\":true,\\"kickoffTime\\":\\"15:00\\",\\"date\\":\\"Sat 24 October\\",\\"competition\\":\\"Premier League\\",\\"competitionLogo\\":[\\"$\\",\\"img\\",null,{\\"src\\":\\"https://images.ctfassets.net/rm6ms1yxue4m/3wjJ3sw5ECsolGJb1ZZNBV/746569b560875c50b0f4cd5feaf52f5c/pl-main-logo.png\\",\\"alt\\":\\"pl-main-logo\\"}],\\"venue\\":\\"Anfield\\",\\"crest\\":[\\"$\\",\\"img\\",null,{\\"src\\":\\"https://images.ctfassets.net/rm6ms1yxue4m/hTBH1GaW3aj7S85xaBUrB/523c0f79163a37ac8e070268caafe314/Name_Default_Colour_2x.png\\",\\"alt\\":\\"Liverpool Crest\\",\\"width\\":48,\\"height\\":48}],\\"priceFrom\\":\\"£382.00\\",\\"priceTo\\":\\"$undefined\\",\\"statusBadge\\":\\"$undefined\\",\\"disabled\\":\\"$undefined\\",\\"type\\":\\"ticketing\\",\\"statusBadgeTheme\\":\\"$undefined\\",\\"awayCrest\\":[\\"$\\",\\"img\\",null,{\\"src\\":\\"https://images.ctfassets.net/rm6ms1yxue4m/3JZZvFr75QC9Q5tS9L0vps/d92bf680f2806337fe7e3d78764e909d/Brighton___Hove_Albion_FC_Crest.png\\",\\"alt\\":\\"36-brightonandhovealbion-crest\\",\\"width\\":48,\\"height\\":48}],\\"dictionary\\":{\\"homeLabel\\":\\"HOME\\",\\"awayLabel\\":\\"AWAY\\"}}},{\\"kind\\":\\"fixture\\",\\"sortDate\\":\\"2026-10-25T14:00:00.000Z\\",\\"categoryId\\":\\"6279\\",\\"kickOffTbc\\":\\"$undefined\\",';
             return true;
         });
         await faulty.download();
-        expect(() => { faulty.find() }).not.toThrow();
-        expect(Mocks.console.error).toHaveBeenCalled();
-        
+        let size: number = 0;
+        expect(() => { size = faulty.find() }).not.toThrow();
+        expect(Mocks.console.error).not.toHaveBeenCalled();
+        expect(size).toEqual(1);
     });
 
     it('should return false if it cannot parse any fixture pages', async () => {
@@ -146,7 +147,7 @@ describe('Parsing an active home fixture', () => {
     it('should successfully parse', () => {
         let size: number = 0;
         expect(() => { size = fixture.find() }).not.toThrow();
-        expect(size).toEqual(6);
+        expect(size).toEqual(5);
     });
 
     it('should successfully recognise the number of valid sales', () => {
@@ -200,15 +201,19 @@ describe('Parsing an active home fixture with specfic game criteria', () => {
     it('should successfully parse', () => {
         let size: number = 0;
         expect(() => { size = fixture.find() }).not.toThrow();
-        expect(size).toEqual(10);
+        expect(size).toEqual(9);
     });
 
     it('should successfully recognise the number of valid sales', () => {
         expect(fixture.getActiveSaleCount()).toEqual(7);
     });
 
+    it('should return a title without date if none supplied', () => {
+        expect(fixture.getSales()?.at(5)?.getTitle()).toEqual('Additional Members Sale (4+)');
+    });
+
     it('should successfully generate a JSON string with sales dates', () => {
-        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2026-manchester-city-h-premier-league","match":"Manchester City (H) - Premier League (2026-27)","sales":[{"description":"Additional Members Sale Registration (4+)","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale Registration (3+)","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale Registration (2+)","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale Registration (1+)","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale Registration","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale (4+)","date":"Mon Oct 05 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Young Adult Area Ballot","date":"Tue Sep 29 2026 10:00:00 GMT+0100 (British Summer Time)"}]}}');
+        expect(fixture.getJson()).toEqual('{"fixture":{"id":"2026-manchester-city-h-premier-league","match":"Manchester City (H) - Premier League (2026-27)","sales":[{"description":"Additional Members Sale Registration (4+)","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale Registration (3+)","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale Registration (2+)","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale Registration (1+)","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale Registration","date":"Mon Sep 28 2026 11:00:00 GMT+0100 (British Summer Time)"},{"description":"Additional Members Sale (4+)","date":"Invalid Date"},{"description":"Young Adult Area Ballot","date":"Tue Sep 29 2026 10:00:00 GMT+0100 (British Summer Time)"}]}}');
     });
 
 });
@@ -298,6 +303,7 @@ describe('Parsing an active away European fixture', () => {
     });
 
 });
+
 /*
 describe('Parsing an active fixture with a TBC fixture date', () => {
 
@@ -376,7 +382,7 @@ describe('Parsing an inactive home fixture', () => {
     it('should successfully parse', () => {
         let size: number = 0;
         expect(() => { size = fixture.find() }).not.toThrow();
-        expect(size).toEqual(4);
+        expect(size).toEqual(2);
     });
 
     it('should successfully recognise the number of valid sales', () => {

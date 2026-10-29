@@ -60,8 +60,12 @@ export default class Sale {
             day: "numeric", month: "short", year: "numeric",
             hour: "numeric", minute: "2-digit", 
         };
-        const date = this.date!.toLocaleDateString("en-GB", options).replace(' at ', ' ');
-        return  date + ' : ' + this.description;
+        if ( this.date != null && this.date.toString() != 'Invalid Date' ) {
+            const date = this.date!.toLocaleDateString("en-GB", options).replace(' at ', ' ');
+            return  date + ' : ' + this.description;
+        } else {
+            return this.description;
+        }
 
     }
 
@@ -112,8 +116,8 @@ export default class Sale {
 
         const description: boolean = (this.description == sale.description);
         const status: boolean = (this.status == sale.status);
-        const date: boolean = ((this.date == null && sale.date == null) || (this.date != null && sale.date != null && this.date!.getFullYear() == sale.date!.getFullYear() && this.date!.getMonth() == sale.date!.getMonth() && this.date!.getDate() == sale.date!.getDate()));
-        const time: boolean = ((this.date == null && sale.date == null) || (this.date != null && sale.date != null && this.date!.getHours() == sale.date!.getHours() && this.date!.getMinutes() == sale.date!.getMinutes()));
+        const date: boolean = ((this.date == null && sale.date == null) || (this.date?.toString() == 'Invalid Date' && sale.date?.toString() == 'Invalid Date') || (this.date != null && sale.date != null && this.date!.getFullYear() == sale.date!.getFullYear() && this.date!.getMonth() == sale.date!.getMonth() && this.date!.getDate() == sale.date!.getDate()));
+        const time: boolean = ((this.date == null && sale.date == null) || (this.date?.toString() == 'Invalid Date' && sale.date?.toString() == 'Invalid Date') || (this.date != null && sale.date != null && this.date!.getHours() == sale.date!.getHours() && this.date!.getMinutes() == sale.date!.getMinutes()));
 
         return (description && status && date && time);
 

@@ -186,28 +186,30 @@ export default class Fixture {
 
             }
             case 2026: {
-                                
+                               
                 // First off, a quick sanity check we've got the right fixture
-                const pattern: RegExp = new RegExp('<h2.*?data-testid="hospitality-fixture-header__team-' + (this.venue == 'A' ? 'home' : 'away') + '">' + this.opposition.replace('&amp; ', '') + '</h2>', 'i'); 
+                const pattern: RegExp = new RegExp('<h2.*?data-testid="hospitality-fixture-header__team-' + (this.venue == 'A' ? 'home' : 'away') + '">' + this.opposition.replaceAll('&', '(&amp;|and)') + '</h2>', 'i'); 
                 const title: Nullable<RegExpMatchArray> = this.html.match(pattern);
                 if ( title == null ) {
                     throw new Error('Parsing the wrong fixture - expecting "' + this.opposition + '"');
                 }
                     
                 // Now, find each element representing a sale date, registration date, etc.
-                // const ore: RegExp = /<section.*?data-testid="ticketing-accordion-list-item">.*?<span.*?data-testid="ticketing-status-indicator__label">(.+?)<\/span>(?:.*?<time.*?dateTime="(.*?)".*?>.*?<\/time>)?.*?<span.*?data-testid="ticketing-accordion-list-item__title\">(.+?)<\/span>(?:.*?<span.*?data-testid="ticketing-accordion-list-item__assistive-text">.*?Credit Balance of (\d+?)\D*?<\/span>)?.*?<article.*?>.*?(?:[from|opens] (\d+?)(?:[:\.](\d+?))?([ap]m).*? (\d{1,2} \w+?)\W.*?)?<\/article>.*?<\/section>/gs;
                 const outer: RegExp = /<section.*?data-testid="ticketing-accordion-list-item">(.*?)<\/section>/gs;
                 let section: Nullable<RegExpExecArray>;
                 while ( (section = outer.exec(this.html)) !== null ) {
-                    const inner: RegExp = /<span.*?data-testid="ticketing-status-indicator__label">(.+?)<\/span>(?:.*?<time.*?dateTime="(.*?)".*?>.*?<\/time>)?.*?<span.*?data-testid="ticketing-accordion-list-item__title">(.+?)<\/span>(?:.*?<span.*?data-testid="ticketing-accordion-list-item__assistive-text">.*?Credit Balance of (\d+?)\D*?<\/span>)?.*?<article.*?>.*?(?:[from|opens] (\d+?)(?:[:.](\d+?))?([ap]m).*? (\d{1,2} \w+?)\W.*?)?<\/article>/gs;
+                    const inner: RegExp = /<span.*?data-testid="ticketing-status-indicator__label">(.+?)<\/span>(?:.*?<time.*?dateTime="(.*?)".*?>.*?<\/time>)?.*?<span.*?data-testid="ticketing-accordion-list-item__title">(.+?)<\/span>(?:.*?<span.*?data-testid="ticketing-accordion-list-item__assistive-text">(.*?)<\/span>)?.*?<article.*?>.*?(?:[from|opens] (\d+?)(?:[:.](\d+?))?([ap]m).*? (\d{1,2} \w+?)\W.*?)?<\/article>/gs;
                     let match: Nullable<RegExpExecArray>;
                     while ( (match = inner.exec(section[1])) !== null ) {
+                        const description: string = match[4];
+                        const b: RegExp = /^.*Credit Balance of (\d+?)\D*?$/i;
+                        const balance: Nullable<RegExpExecArray> = b.exec(description);
                         let credits: number = 0;
-                        if (match[4] != null) {
-                            credits = parseInt(match[4]);
+                        if ( balance != null ) {
+                            credits = parseInt(balance[1]);
                         }
 
-                        const description: string = match[3]
+                        const title: string = match[3]
                             .replace(/SEASON TICKET HOLDERS/i, 'ST Holders')
                             .replace(/OFFICIAL MEMBERS/i, 'Members')
                             .replace(/ALL RED MEMBERS \(FULL, LIGHT OR JUNIOR\)/i, 'Members')
@@ -216,22 +218,22 @@ export default class Fixture {
                             .replace(/AND/i, 'and')
                             .replace(/&amp;/, 'and')
                             .replace(/(\s+\d+)\s+?(\+\s+?)/, '$1$2') + 
-                            ((!match[3].toLowerCase().endsWith('sale') && !match[3].toLowerCase().endsWith('registration') && !match[3].toLowerCase().endsWith('ballot')) ? ' Sale' : '') + 
+                            ((!match[3].trim().toLowerCase().endsWith('sale') && !match[3].trim().toLowerCase().endsWith('registration') && !match[3].toLowerCase().endsWith('ballot')) ? ' Sale' : '') + 
                             (credits > 0 ? ' (' + credits + '+)' : '');
+
                         const status: Status = (
                             (match[1].toLowerCase().indexOf('ended') > -1 || match[1].toLowerCase().indexOf('sold out') > -1) ? Status.ENDED : (
                             (match[1].toLowerCase().indexOf('available') > -1 || match[1].toLowerCase().indexOf('buy now') > -1) ? Status.AVAILABLE : 
                             Status.PENDING
                         ));
-                        // We're not interested in Priority Rights holders or Wheelchair Bays
-                        if ( description.toLowerCase().includes('priority right') || description.toLowerCase().includes('wheelchair bay') ) {
+                        // We're not interested in Hospitality, Priority Rights holders or Wheelchair Bays
+                        if ( title.toLowerCase().includes('priority right') || title.toLowerCase().includes('wheelchair bay') || title.toLowerCase().includes('hospitality') || description?.toLowerCase().includes('priority right') || description?.toLowerCase().includes('wheelchair bay') || description?.toLowerCase().includes('hospitality') ) {
                             continue;
                         }
 
                         // As with the fixture date, the sale date/time is formatted in such a way that Javascript will throw "Invalid Date" 
                         // if you try and convert directly, so a bit of interpretation is required
                         let date: Nullable<Date> = null;
-
                         if (match[2]) {
                             date = new Date(match[2]);
                         } else {
@@ -242,7 +244,7 @@ export default class Fixture {
                             date.setMinutes(minutes);
                         }
 
-                        const sale: Sale = new Sale(description, status, date);
+                        const sale: Sale = new Sale(title, status, date);
                         this.sales.push(sale);
                     }
                 }
@@ -250,7 +252,7 @@ export default class Fixture {
 
             }
         }
-        Narrator.success('"' + this.opposition + '(' + this.venue + ') - ' + this.competition + '" successfully parsed');
+        Narrator.success('"' + this.opposition.replace('&amp;', '&') + ' (' + this.venue + ') - ' + this.competition + '" successfully parsed');
         return this.sales.length;
 
     }
